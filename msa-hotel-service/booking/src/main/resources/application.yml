@@ -31,6 +31,7 @@ spring:
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    # 로컬 개발: localhost:9092 / Docker Compose: kafka:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -58,6 +59,7 @@ app:
   kafka:
     topics:
       booking-events: booking-events
+      payment-completed-events: payment-completed-events
 
 springdoc:
   swagger-ui:

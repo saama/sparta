@@ -4,7 +4,11 @@ import com.domain.booking.dto.request.BookingCancelRequest;
 import com.domain.booking.dto.request.BookingCreateRequest;
 import com.domain.booking.dto.response.BookingResponse;
 import com.domain.booking.entity.Booking;
+import com.domain.booking.event.BookingCreatedEvent;
+import com.domain.booking.event.BookingEventProducer;
 import com.domain.booking.repository.BookingRepository;
+import com.domain.coupon.entity.UserCoupon;
+import com.domain.coupon.repository.UserCouponRepository;
 import com.domain.room.entity.RoomProduct;
 import com.domain.room.entity.RoomStock;
 import com.domain.room.repository.RoomProductRepository;
@@ -17,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -26,8 +31,10 @@ public class BookingService {
   private final BookingRepository bookingRepository;
   private final RoomProductRepository roomProductRepository;
   private final RoomStockRepository roomStockRepository;
+  private final UserCouponRepository userCouponRepository;
+  private final BookingEventProducer bookingEventProducer;
 
-  @Transactional
+  @Transactional(isolation = Isolation.REPEATABLE_READ)
   public BookingResponse create(Long userId, BookingCreateRequest request) {
     RoomProduct room = roomProductRepository.findById(request.getRoomProductId())
         .orElseThrow(() -> new DomainException(DomainExceptionCode.NOT_FOUND_ROOM));
@@ -52,6 +59,21 @@ public class BookingService {
     String bookingNumber = generateBookingNumber();
     int totPrice = room.getPrice() * nights;
 
+    if (request.getUserCouponId() != null) {
+      UserCoupon userCoupon = userCouponRepository.findByIdAndUserIdWithCoupon(
+              request.getUserCouponId(), userId)
+          .orElseThrow(() -> new DomainException(DomainExceptionCode.NOT_FOUND_COUPON));
+
+      if (userCoupon.getIsUsed()) {
+        throw new DomainException(DomainExceptionCode.ALREADY_USED_COUPON);
+      }
+      userCoupon.getCoupon().validateUsable(LocalDate.now());
+
+      int discount = userCoupon.getCoupon().calculateDiscount(totPrice);
+      totPrice -= discount;
+      userCoupon.use();
+    }
+
     Booking booking = Booking.builder()
         .userId(userId)
         .roomProduct(room)
@@ -67,7 +89,19 @@ public class BookingService {
         .totPrice(totPrice)
         .build();
 
-    return BookingResponse.from(bookingRepository.save(booking));
+    Booking saved = bookingRepository.save(booking);
+
+    bookingEventProducer.publishBookingCreated(BookingCreatedEvent.builder()
+        .bookingId(saved.getId())
+        .bookingNumber(saved.getBookingNumber())
+        .userId(userId)
+        .roomProductId(room.getId())
+        .arrDate(saved.getArrDate())
+        .depDate(saved.getDepDate())
+        .totPrice(saved.getTotPrice())
+        .build());
+
+    return BookingResponse.from(saved);
   }
 
   @Transactional(readOnly = true)
@@ -98,6 +132,11 @@ public class BookingService {
     List<RoomStock> stocks = roomStockRepository.findByRoomProductIdAndDateBetween(
         booking.getRoomProduct().getId(), booking.getArrDate(), booking.getDepDate().minusDays(1));
     stocks.forEach(RoomStock::increase);
+
+    if (booking.getUserCouponId() != null) {
+      userCouponRepository.findById(booking.getUserCouponId())
+          .ifPresent(UserCoupon::restore);
+    }
 
     return BookingResponse.from(booking);
   }

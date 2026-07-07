@@ -33,6 +33,8 @@ public enum DomainExceptionCode {
   ALREADY_USED_COUPON(HttpStatus.BAD_REQUEST, "이미 사용된 쿠폰입니다."),
   EXPIRED_COUPON(HttpStatus.BAD_REQUEST, "유효기간이 만료된 쿠폰입니다."),
   NOT_MET_MIN_PRICE(HttpStatus.BAD_REQUEST, "최소 주문 금액을 충족하지 않습니다."),
+  COUPON_SOLD_OUT(HttpStatus.CONFLICT, "쿠폰이 모두 소진되었습니다."),
+  ALREADY_ISSUED_COUPON(HttpStatus.CONFLICT, "이미 발급받은 쿠폰입니다."),
 
   NOT_FOUND_PAYMENT(HttpStatus.NOT_FOUND, "결제 정보를 찾을 수 없습니다."),
   PAYMENT_FAILED(HttpStatus.BAD_REQUEST, "결제 처리에 실패하였습니다."),

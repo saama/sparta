@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/workspace/sparta-msa-project-part-4-sample/week-11/order-service/**)",
+      "Read(//d/workspace/sparta-msa-project-part-4-sample/week-11/**)",
+      "Bash(./gradlew compileJava)",
+      "Bash(./gradlew build)",
+      "Bash(./gradlew bootRun)",
+      "Bash(docker-compose up -d user-db redis kafka)",
+      "Bash(docker stop redis)",
+      "Bash(docker rm redis)",
+      "Bash(curl -s http://localhost:8081/actuator/health)",
+      "Bash(netstat -tulpn)",
+      "Bash(docker logs user-db)",
+      "Bash(cat \"./msa-booking-service/user-service/user-service.log\")",
+      "Bash(./gradlew --info bootRun)",
+      "Bash(cat /d/workspace/sparta-msa-project-final/msa-hotel-service/booking/src/main/resources/application.yml)",
+      "Bash(cat /d/workspace/sparta-msa-project-final/msa-hotel-service/booking/src/main/resources/application.yaml)",
+      "Bash(cat /d/workspace/sparta-msa-project-final/msa-hotel-service/booking/build.gradle)",
+      "Bash(cat /d/workspace/sparta-msa-project-final/msa-hotel-service/booking/pom.xml)",
+      "Read(//c/Users/hjpw2/.gradle/wrapper/dists/gradle-8.12.1-bin/eumc4uhoysa37zql93vfjkxy0/gradle-8.12.1/bin//**)",
+      "Bash(/d/workspace/sparta-msa-project-final/msa-hotel-service/booking/gradlew -p /d/workspace/sparta-msa-project-final/msa-hotel-service/booking test --tests \"com.domain.room.service.RoomProductServiceTest\" --no-daemon)",
+      "Bash(rm -rf /d/workspace/sparta-msa-project-final/msa-hotel-service/booking/build/test-results/test/binary)",
+      "Bash(/d/workspace/sparta-msa-project-final/msa-hotel-service/booking/gradlew -p /d/workspace/sparta-msa-project-final/msa-hotel-service/booking test --tests \"com.domain.room.service.RoomProductServiceTest\" --no-daemon --rerun-tasks)",
+      "Bash(/d/workspace/sparta-msa-project-final/msa-hotel-service/booking/gradlew -p /d/workspace/sparta-msa-project-final/msa-hotel-service/booking clean --no-daemon)",
+      "Bash(cmd.exe /c \"taskkill /F /IM java.exe /T\")",
+      "Bash(rm -rf \"/d/workspace/sparta-msa-project-final/msa-hotel-service/booking/build/test-results\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(/d/workspace/sparta-msa-project-final/msa-hotel-service/booking/gradlew -p /d/workspace/sparta-msa-project-final/msa-hotel-service/booking test --tests \"com.domain.booking.service.BookingServiceTest\" --no-daemon)",
+      "Bash(/d/workspace/sparta-msa-project-final/msa-hotel-service/booking/gradlew -p /d/workspace/sparta-msa-project-final/msa-hotel-service/booking test --tests \"com.domain.auth.service.AuthServiceTest\" --no-daemon)",
+      "Bash(/d/workspace/sparta-msa-project-final/msa-hotel-service/booking/gradlew -p /d/workspace/sparta-msa-project-final/msa-hotel-service/booking test --tests \"com.domain.booking.service.BookingServiceTest\" --tests \"com.domain.coupon.service.CouponServiceTest\" --tests \"com.domain.payment.service.PaymentServiceTest\" --tests \"com.domain.auth.service.AuthServiceTest\" --tests \"com.global.security.JwtTokenProviderTest\" --no-daemon)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
