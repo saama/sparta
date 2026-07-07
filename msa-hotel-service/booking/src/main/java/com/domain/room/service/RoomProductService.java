@@ -14,6 +14,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class RoomProductService {
   private final RoomProductRepository roomProductRepository;
   private final RoomStockRepository roomStockRepository;
 
+  @Cacheable(value = "rooms", key = "#arrDate + '_' + #depDate + '_' + #guestCount")
   @Transactional(readOnly = true)
   public List<AvailableRoomResponse> getAvailableRooms(LocalDate arrDate, LocalDate depDate,
       int guestCount) {
@@ -48,6 +51,7 @@ public class RoomProductService {
     return result;
   }
 
+  @Cacheable(value = "rooms", key = "'detail_' + #id")
   @Transactional(readOnly = true)
   public RoomProductResponse getRoom(Long id) {
     RoomProduct room = roomProductRepository.findById(id)
@@ -55,6 +59,7 @@ public class RoomProductService {
     return RoomProductResponse.from(room);
   }
 
+  @CacheEvict(value = "rooms", allEntries = true)
   @Transactional
   public RoomProductResponse createRoom(RoomProductCreateRequest request) {
     RoomProduct room = RoomProduct.builder()
@@ -69,6 +74,7 @@ public class RoomProductService {
     return RoomProductResponse.from(roomProductRepository.save(room));
   }
 
+  @CacheEvict(value = "rooms", allEntries = true)
   @Transactional
   public RoomProductResponse updateRoom(Long id, RoomProductCreateRequest request) {
     RoomProduct room = roomProductRepository.findById(id)
@@ -79,6 +85,7 @@ public class RoomProductService {
     return RoomProductResponse.from(room);
   }
 
+  @CacheEvict(value = "rooms", allEntries = true)
   @Transactional
   public void deleteRoom(Long id) {
     RoomProduct room = roomProductRepository.findById(id)
@@ -86,6 +93,7 @@ public class RoomProductService {
     room.deactivate();
   }
 
+  @CacheEvict(value = "rooms", allEntries = true)
   @Transactional
   public void initStock(Long roomId, RoomStockInitRequest request) {
     RoomProduct room = roomProductRepository.findById(roomId)

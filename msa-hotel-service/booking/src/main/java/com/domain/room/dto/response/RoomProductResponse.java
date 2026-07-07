@@ -3,12 +3,16 @@ package com.domain.room.dto.response;
 import com.domain.room.entity.RoomProduct;
 import com.domain.room.entity.RoomType;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoomProductResponse {
 

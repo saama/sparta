@@ -1,0 +1,2 @@
+ALTER TABLE `review`
+    MODIFY COLUMN `rating` INT NOT NULL COMMENT '별점 : 1~5';

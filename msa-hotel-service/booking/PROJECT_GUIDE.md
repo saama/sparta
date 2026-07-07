@@ -63,32 +63,32 @@
 - [ ] Redis 분산 락 - 선착순 쿠폰 발급 동시성 처리
 
 ### 동시성 처리 (6~7주차 학습 적용)
-- [ ] 비관적 락 (`@Lock(PESSIMISTIC_WRITE)`) - 객실 재고 차감
-- [ ] 낙관적 락 (`@Version`) - 쿠폰 수량 차감
-- [ ] 트랜잭션 격리 수준 설정 - 예약 생성 시 REPEATABLE_READ
-- [ ] 트랜잭션 전파 옵션 - 결제 실패 시 롤백 전략
+- [x] 비관적 락 (`@Lock(PESSIMISTIC_WRITE)`) - 객실 재고 차감
+- [x] 낙관적 락 (`@Version`) - 쿠폰 수량 차감
+- [x] 트랜잭션 격리 수준 설정 - 예약 생성 시 REPEATABLE_READ
+- [x] 트랜잭션 전파 옵션 - 결제 실패 시 롤백 전략
 
 ### 외부 연동
-- [ ] OpenFeign - 가상 PG사 결제 API 연동
+- [x] OpenFeign - 가상 PG사 결제 API 연동 (Mock PgClient)
 - [ ] Spring Retry - PG API 실패 시 재시도
 
 ### 메시징 (11주차 학습 적용)
-- [ ] Kafka Producer - 예약 생성 이벤트 발행 (`booking-events`)
-- [ ] Kafka Consumer - 결제 완료 이벤트 수신 → 예약 확정 처리
+- [x] Kafka Producer - 예약 생성 이벤트 발행 (`booking-events`)
+- [x] Kafka Consumer - 결제 완료 이벤트 수신 → 예약 확정 처리
 
 ### 모니터링 & 로깅 (10주차 학습 적용)
-- [x] Spring AOP - API 요청/응답 로깅, 실행 시간 측정
+- [ ] Spring AOP - API 요청/응답 로깅, 실행 시간 측정
 - [ ] ELK Stack (Elasticsearch + Logstash + Kibana)
 - [x] Prometheus + Grafana - 서버 메트릭 시각화
 - [x] Spring Actuator (health, prometheus, metrics 노출)
 
 ### 배포 (8주차 학습 적용)
 - [x] Dockerfile - 앱 컨테이너화
-- [x] docker-compose - MySQL, Redis, Kafka, Zookeeper 통합
-- [ ] docker-compose 확장 - ELK, Prometheus, Grafana 추가
+- [x] docker-compose - MySQL, Redis, Kafka 통합
+- [ ] docker-compose 확장 - ELK Stack 추가
 
 ### 테스트 (12주차 학습 적용)
-- [ ] 단위 테스트 - Service 레이어 (JUnit5 + Mockito)
+- [x] 단위 테스트 - Service 레이어 (JUnit5 + Mockito) - 38개 케이스 통과
 - [ ] E2E 시나리오 테스트 - 회원가입 → 예약 → 결제 흐름
 
 ### 검색 (Could-Have)
@@ -102,7 +102,7 @@
 
 ## 3. DB 스키마
 
-### 현재 구성 (Flyway V1, V2, V3 적용 완료)
+### 현재 구성 (Flyway V1 ~ V5 적용 완료)
 
 ```
 user            - 회원 정보 (role 컬럼 추가: USER | ADMIN)
@@ -252,7 +252,7 @@ review          - 리뷰 (투숙 완료 예약에 한해 작성 가능)
 
 ## 6. 주차별 작업 플랜
 
-> 1주차 완료 | 2주차 완료 | 현재 3주차 진행 예정 (리뷰/캐싱/모니터링)
+> 1주차 완료 ✅ | 2주차 완료 ✅ | 현재 3주차 진행 중 (리뷰/캐싱/AOP 로깅/ELK)
 
 ### 1주차 - 인프라 정비 & 핵심 API 뼈대 ✅
 
