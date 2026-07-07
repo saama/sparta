@@ -1,12 +1,16 @@
-package com.domain.user.entity;
+package com.domain.room.entity;
 
 import com.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,7 +20,7 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
-@Table
+@Table(name = "room_stock")
 @Entity
 @Getter
 @DynamicInsert
@@ -24,43 +28,37 @@ import org.hibernate.annotations.DynamicUpdate;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User extends BaseEntity {
+public class RoomStock extends BaseEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   Long id;
 
-  @Column(nullable = false, unique = true)
-  String username;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "room_product_id", nullable = false)
+  RoomProduct roomProduct;
 
   @Column(nullable = false)
-  String password;
-
-  @Column(nullable = false, unique = true)
-  String email;
+  LocalDate date;
 
   @Column(nullable = false)
-  String name;
-
-  @Column(nullable = false)
-  String phone;
-
-  @Column(nullable = false)
-  String role;
+  Integer stock;
 
   @Builder
-  public User(
-      String username,
-      String password,
-      String email,
-      String name,
-      String phone) {
-    this.username = username;
-    this.name = name;
-    this.phone = phone;
-    this.password = password;
-    this.email = email;
-    this.role = "USER";
+  public RoomStock(RoomProduct roomProduct, LocalDate date, Integer stock) {
+    this.roomProduct = roomProduct;
+    this.date = date;
+    this.stock = stock;
   }
 
+  public void decrease() {
+    if (this.stock <= 0) {
+      throw new IllegalStateException("재고가 없습니다.");
+    }
+    this.stock--;
+  }
+
+  public void increase() {
+    this.stock++;
+  }
 }

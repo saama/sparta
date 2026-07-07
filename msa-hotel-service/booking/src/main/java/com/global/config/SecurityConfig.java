@@ -2,6 +2,8 @@ package com.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.global.response.ApiResponse;
+import com.global.security.JwtAuthenticationFilter;
+import com.global.security.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -15,8 +17,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -26,26 +27,24 @@ public class SecurityConfig {
   public static final String[] SECURITY_EXCLUDE_PATHS = {
       "/public/**", "/api/swagger-ui/**", "/swagger-ui/**", "/swagger-ui.html",
       "/api/v3/api-docs/**", "/v3/api-docs/**", "/favicon.ico", "/actuator/**",
-      "/swagger-resources/**", "/external/**", "/api/auth/**"
+      "/swagger-resources/**", "/external/**",
+      "/api/auth/registration", "/api/auth/login", "/api/auth/refresh", "/api/auth/status",
+      "/api/rooms", "/api/rooms/**"
   };
 
   private final ObjectMapper objectMapper;
+  private final JwtTokenProvider jwtTokenProvider;
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
         .csrf(AbstractHttpConfigurer::disable)
-        .securityContext(context -> context
-            .securityContextRepository(securityContextRepository())
-        )
         .sessionManagement(session -> session
-            .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-            .maximumSessions(1)
-            .maxSessionsPreventsLogin(false)
+            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         )
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(SECURITY_EXCLUDE_PATHS).permitAll()
-            .requestMatchers("/api/**").hasRole("USER")
+            .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .anyRequest().authenticated()
         )
         .formLogin(AbstractHttpConfigurer::disable)
@@ -59,14 +58,15 @@ public class SecurityConfig {
                   .build();
               response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
             })
-        );
+        )
+        .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
 
   @Bean
-  public SecurityContextRepository securityContextRepository() {
-    return new HttpSessionSecurityContextRepository();
+  public JwtAuthenticationFilter jwtAuthenticationFilter() {
+    return new JwtAuthenticationFilter(jwtTokenProvider, objectMapper);
   }
 
   @Bean
