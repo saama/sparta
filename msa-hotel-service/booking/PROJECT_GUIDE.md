@@ -59,7 +59,7 @@
 - [x] 인덱스 설계 (booking, room_stock 핵심 쿼리 최적화)
 
 ### 캐싱
-- [ ] Redis 캐싱 - 객실 상품 목록 캐싱 (`@Cacheable`)
+- [x] Redis 캐싱 - 객실 상품 목록 캐싱 (`@Cacheable` / 수정 시 `@CacheEvict`)
 - [ ] Redis 분산 락 - 선착순 쿠폰 발급 동시성 처리
 
 ### 동시성 처리 (6~7주차 학습 적용)
@@ -77,18 +77,18 @@
 - [x] Kafka Consumer - 결제 완료 이벤트 수신 → 예약 확정 처리
 
 ### 모니터링 & 로깅 (10주차 학습 적용)
-- [ ] Spring AOP - API 요청/응답 로깅, 실행 시간 측정
-- [ ] ELK Stack (Elasticsearch + Logstash + Kibana)
+- [x] Spring AOP - API 요청/응답 로깅, 실행 시간 측정 (`LoggingAspect`)
+- [x] ELK Stack (Elasticsearch + Logstash + Kibana) - Logstash 파이프라인 연동 완료
 - [x] Prometheus + Grafana - 서버 메트릭 시각화
 - [x] Spring Actuator (health, prometheus, metrics 노출)
 
 ### 배포 (8주차 학습 적용)
 - [x] Dockerfile - 앱 컨테이너화
 - [x] docker-compose - MySQL, Redis, Kafka 통합
-- [ ] docker-compose 확장 - ELK Stack 추가
+- [x] docker-compose 확장 - ELK Stack 추가
 
 ### 테스트 (12주차 학습 적용)
-- [x] 단위 테스트 - Service 레이어 (JUnit5 + Mockito) - 38개 케이스 통과
+- [x] 단위 테스트 - Service 레이어 (JUnit5 + Mockito) - 49개 케이스 통과 (리뷰 포함 6개 도메인 + JWT)
 - [ ] E2E 시나리오 테스트 - 회원가입 → 예약 → 결제 흐름
 
 ### 검색 (Could-Have)
@@ -179,7 +179,7 @@ review          - 리뷰 (투숙 완료 예약에 한해 작성 가능)
 
 #### 모니터링
 - [x] Spring AOP 로깅 (API 요청/응답 + 실행 시간)
-- [ ] ELK Stack 로그 파이프라인 구성
+- [x] ELK Stack 로그 파이프라인 구성 (Kibana 대시보드 구성은 잔여)
 - [x] Prometheus + Grafana 메트릭 대시보드
 
 ### Could-Have (부가 기능)
@@ -252,7 +252,7 @@ review          - 리뷰 (투숙 완료 예약에 한해 작성 가능)
 
 ## 6. 주차별 작업 플랜
 
-> 1주차 완료 ✅ | 2주차 완료 ✅ | 현재 3주차 진행 중 (리뷰/캐싱/AOP 로깅/ELK)
+> 1주차 완료 ✅ | 2주차 완료 ✅ | 3주차 완료 ✅ (Kibana 대시보드만 잔여) | 현재 4주차 진행 중
 
 ### 1주차 - 인프라 정비 & 핵심 API 뼈대 ✅
 
@@ -310,28 +310,28 @@ review          - 리뷰 (투숙 완료 예약에 한해 작성 가능)
 
 ---
 
-### 3주차 - 고도화 & 모니터링
+### 3주차 - 고도화 & 모니터링 ✅
 
 **목표:** 리뷰, 캐싱, AOP 로깅, ELK/Prometheus 구축
 
 #### 리뷰
-- [ ] `Review` 엔티티 작성
-- [ ] 리뷰 작성/수정/삭제 API
-- [ ] 리뷰 목록 조회 (별점 필터링, 페이징)
+- [x] `Review` 엔티티 작성
+- [x] 리뷰 작성/수정/삭제 API
+- [x] 리뷰 목록 조회 (별점 필터링, 페이징 - `PageResult` 적용)
 
 #### Redis 캐싱
-- [ ] 객실 상품 목록 캐싱 (`@Cacheable`)
-- [ ] 캐시 무효화 (객실 정보 수정 시 `@CacheEvict`)
+- [x] 객실 상품 목록 캐싱 (`@Cacheable`)
+- [x] 캐시 무효화 (객실 정보 수정 시 `@CacheEvict`)
 
 #### AOP 로깅 (12주차 학습 적용)
-- [ ] `@Around` - API 요청/응답 + 실행 시간 로깅
-- [ ] 예외 발생 시 로그 레벨 구분
+- [x] `@Around` - API 요청/응답 + 실행 시간 로깅
+- [x] 예외 발생 시 로그 레벨 구분 (INFO/DEBUG/ERROR)
 
 #### 모니터링 인프라
-- [ ] `docker-compose` 확장 - Logstash, Elasticsearch, Kibana 추가
-- [ ] Logstash 파이프라인 설정 (앱 로그 → ES 인덱싱)
-- [ ] Kibana 대시보드 구성 (예약/결제/에러 로그)
-- [ ] Prometheus + Grafana 연동 (CPU, 메모리, API 응답시간)
+- [x] `docker-compose` 확장 - Logstash, Elasticsearch, Kibana 추가
+- [x] Logstash 파이프라인 설정 (앱 로그 → ES 인덱싱)
+- [ ] Kibana 대시보드 구성 (예약/결제/에러 로그) ← 직접 구성 예정
+- [x] Prometheus + Grafana 연동 (CPU, 메모리, API 응답시간)
 
 ---
 
@@ -341,12 +341,12 @@ review          - 리뷰 (투숙 완료 예약에 한해 작성 가능)
 
 #### 배포
 - [ ] `docker-compose` 최종 통합 (전체 서비스 네트워크 연결)
-- [ ] 환경 변수 분리 (`.env` 파일)
-- [ ] 헬스체크 설정 확인
+- [x] 환경 변수 분리 (`.env` 파일 - `.env.example` 참고)
+- [x] 헬스체크 설정 확인 (compose 전 서비스에 healthcheck 적용됨)
 
 #### 테스트
-- [ ] Service 레이어 단위 테스트 (JUnit5 + Mockito)
-- [ ] Postman E2E 시나리오: 회원가입 → 로그인 → 객실 조회 → 쿠폰 발급 → 예약 → 결제 → 취소
+- [x] Service 레이어 단위 테스트 (JUnit5 + Mockito) - 49개 케이스
+- [x] E2E 시나리오: 회원가입 → 로그인 → 객실 조회 → 쿠폰 발급 → 예약 → 결제 → 취소 (`e2e/` - .http 파일 + 자동 실행 스크립트, 16개 체크 통과)
 
 #### Could-Have (시간 여유 시)
 - [ ] Elasticsearch 객실 검색 기능
@@ -355,9 +355,9 @@ review          - 리뷰 (투숙 완료 예약에 한해 작성 가능)
 - [ ] Spring AI 객실 추천 챗봇
 
 #### 코드 정리
-- [ ] `DomainExceptionCode` 불필요 코드 정리 (이전 프로젝트 잔재 제거)
-- [ ] `User.name` unique 제약 제거 검토 (이름은 유니크하면 안됨)
-- [ ] README.md 최종 작성
+- [x] `DomainExceptionCode` 불필요 코드 정리 (이전 프로젝트 잔재 제거)
+- [x] `User.name` unique 제약 제거 검토 (이름은 유니크하면 안됨)
+- [x] README.md 최종 작성
 
 ---
 
@@ -379,7 +379,7 @@ review          - 리뷰 (투숙 완료 예약에 한해 작성 가능)
 
 ## 📌 현재 코드 Known Issues
 
-| 위치 | 내용 | 우선순위 |
-|---|---|---|
-| `User.java:42` | `name` 컬럼에 `unique=true` - 이름은 유니크하면 안됨 | 높음 |
-| `DomainExceptionCode.java` | `NOT_FOUND_CATEGORY`, `NOT_FOUND_PRODUCT` 등 이전 프로젝트 잔재 | 중간 |
+| 위치 | 내용 | 우선순위 | 상태 |
+|---|---|---|---|
+| `User.java:42` | `name` 컬럼에 `unique=true` - 이름은 유니크하면 안됨 | 높음 | ✅ 해결 완료 |
+| `DomainExceptionCode.java` | `NOT_FOUND_CATEGORY`, `NOT_FOUND_PRODUCT` 등 이전 프로젝트 잔재 | 중간 | ✅ 해결 완료 |

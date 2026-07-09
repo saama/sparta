@@ -10,8 +10,11 @@ import com.domain.review.entity.Review;
 import com.domain.review.repository.ReviewRepository;
 import com.global.exception.DomainException;
 import com.global.exception.DomainExceptionCode;
+import com.global.response.PageResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,15 +71,16 @@ public class ReviewService {
      *
      * @param roomProductId 객실 상품 ID
      * @param rating        별점 필터 (null이면 전체)
-     * @return 리뷰 목록 (최신순)
+     * @param pageable      페이징 정보 (페이지 번호/크기)
+     * @return 리뷰 페이징 목록 (최신순)
      */
     @Transactional(readOnly = true)
-    public List<ReviewResponse> getByRoom(Long roomProductId, Integer rating) {
-        List<Review> reviews = (rating != null)
-            ? reviewRepository.findByRoomProductIdAndRatingAndIsVisibleTrueOrderByCreatedAtDesc(roomProductId, rating)
-            : reviewRepository.findByRoomProductIdAndIsVisibleTrueOrderByCreatedAtDesc(roomProductId);
+    public PageResult<ReviewResponse> getByRoom(Long roomProductId, Integer rating, Pageable pageable) {
+        Page<Review> reviews = (rating != null)
+            ? reviewRepository.findByRoomProductIdAndRatingAndIsVisibleTrueOrderByCreatedAtDesc(roomProductId, rating, pageable)
+            : reviewRepository.findByRoomProductIdAndIsVisibleTrueOrderByCreatedAtDesc(roomProductId, pageable);
 
-        return reviews.stream().map(ReviewResponse::from).toList();
+        return new PageResult<>(reviews.map(ReviewResponse::from));
     }
 
     /**

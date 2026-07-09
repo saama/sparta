@@ -1,3 +1,6 @@
 .gradle
 build
 .idea
+
+# 환경 변수 (시크릿 포함 - 커밋 금지)
+.env

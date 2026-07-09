@@ -5,10 +5,13 @@ import com.domain.review.dto.request.ReviewUpdateRequest;
 import com.domain.review.dto.response.ReviewResponse;
 import com.domain.review.service.ReviewService;
 import com.global.response.ApiResponse;
+import com.global.response.PageResult;
 import com.global.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,12 +37,18 @@ public class ReviewController {
             ApiResponse.ok(reviewService.create(userDetails.getUserId(), request)));
     }
 
+    /**
+     * 객실 상품별 리뷰 목록 조회 (별점 필터 + 페이징)
+     *
+     * <p>?page=0&size=10 형식으로 페이지를 지정한다. 기본값은 첫 페이지 10건.
+     */
     @GetMapping("/api/rooms/{roomProductId}/reviews")
-    public ResponseEntity<ApiResponse<List<ReviewResponse>>> getByRoom(
+    public ResponseEntity<ApiResponse<PageResult<ReviewResponse>>> getByRoom(
         @PathVariable Long roomProductId,
-        @RequestParam(required = false) Integer rating) {
+        @RequestParam(required = false) Integer rating,
+        @PageableDefault Pageable pageable) {
         return ResponseEntity.ok(
-            ApiResponse.ok(reviewService.getByRoom(roomProductId, rating)));
+            ApiResponse.ok(reviewService.getByRoom(roomProductId, rating, pageable)));
     }
 
     @GetMapping("/api/reviews/me")

@@ -7,8 +7,8 @@ spring:
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/userdb}
-    username: root
-    password: rootpassword
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:rootpassword}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -16,10 +16,12 @@ spring:
       ddl-auto: validate
     show-sql: true
 
-  redis:
-    host: ${SPRING_REDIS_HOST:localhost}
-    port: ${SPRING_REDIS_PORT:6379}
-    password: ${SPRING_REDIS_PASSWORD:}
+  # Spring Boot 3부터 Redis 설정은 spring.data.redis 하위에 위치 (spring.redis는 무시됨)
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
 
   session:
     store-type: none

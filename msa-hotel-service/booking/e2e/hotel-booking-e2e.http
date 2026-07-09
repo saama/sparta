@@ -1,0 +1,156 @@
+# 호텔 예약 서비스 E2E 시나리오 (IntelliJ HTTP Client)
+#
+# 시나리오: 회원가입 → 로그인 → 객실 등록(어드민) → 재고 초기화 → 객실 조회
+#          → 쿠폰 생성/발급 → 예약 → 결제 → 예약 CONFIRMED 확인 → 결제 취소/환불
+#
+# 사전 조건:
+#  1. 로컬 인프라 기동: docker compose -f docker-compose.local.yml up -d
+#  2. 앱 기동: ./gradlew bootRun
+#  3. 어드민 계정은 회원가입 후 DB에서 role 변경 필요 (아래 3번 주석 참고)
+#
+# 자동 실행은 e2e/run-e2e.sh 참고
+
+### 1. 일반 회원가입
+POST http://localhost:8081/api/auth/registration
+Content-Type: application/json
+
+{
+  "username": "e2euser",
+  "name": "테스트유저",
+  "phone": "010-1111-2222",
+  "email": "e2e-user@test.com",
+  "password": "Password1!"
+}
+
+### 2. 어드민용 계정 회원가입
+POST http://localhost:8081/api/auth/registration
+Content-Type: application/json
+
+{
+  "username": "e2eadmin",
+  "name": "테스트어드민",
+  "phone": "010-3333-4444",
+  "email": "e2e-admin@test.com",
+  "password": "Password1!"
+}
+
+### 3. (수동) 어드민 권한 부여 - DB에서 직접 실행
+# docker exec user-db mysql -uroot -prootpassword userdb \
+#   -e "UPDATE user SET role='ADMIN' WHERE email='e2e-admin@test.com'"
+
+### 4. 어드민 로그인 (role 변경 후)
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "e2e-admin@test.com",
+  "password": "Password1!"
+}
+
+> {% client.global.set("adminToken", response.body.data.accessToken); %}
+
+### 5. 객실 상품 등록 (어드민)
+POST http://localhost:8081/api/admin/rooms
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "E2E 디럭스 더블",
+  "roomType": "DELUXE",
+  "price": 150000,
+  "baseCapacity": 2,
+  "maxCapacity": 4,
+  "description": "E2E 테스트용 객실"
+}
+
+> {% client.global.set("roomId", response.body.data.id); %}
+
+### 6. 날짜별 재고 초기화 (어드민)
+POST http://localhost:8081/api/admin/rooms/{{roomId}}/stock
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "startDate": "2026-08-01",
+  "endDate": "2026-08-10",
+  "stock": 5
+}
+
+### 7. 쿠폰 생성 (어드민)
+POST http://localhost:8081/api/admin/coupons
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "E2E-WELCOME",
+  "name": "E2E 웰컴 쿠폰",
+  "discountType": "FIXED",
+  "discountValue": 10000,
+  "minPrice": 100000,
+  "issueLimit": 100,
+  "validFrom": "2026-01-01",
+  "validUntil": "2026-12-31"
+}
+
+> {% client.global.set("couponId", response.body.data.id); %}
+
+### 8. 일반 유저 로그인
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "e2e-user@test.com",
+  "password": "Password1!"
+}
+
+> {% client.global.set("userToken", response.body.data.accessToken); %}
+
+### 9. 객실 목록 조회 (날짜/인원 필터, 인증 불필요)
+GET http://localhost:8081/api/rooms?arrDate=2026-08-01&depDate=2026-08-03&guestCount=2
+
+### 10. 쿠폰 발급 (유저)
+POST http://localhost:8081/api/coupons/{{couponId}}/issue
+Authorization: Bearer {{userToken}}
+
+> {% client.global.set("userCouponId", response.body.data.id); %}
+
+### 11. 예약 생성 (쿠폰 적용) → status: PENDING
+POST http://localhost:8081/api/bookings
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "roomProductId": {{roomId}},
+  "arrDate": "2026-08-01",
+  "depDate": "2026-08-03",
+  "adultCount": 2,
+  "guestName": "테스트유저",
+  "guestPhone": "010-1111-2222",
+  "userCouponId": {{userCouponId}}
+}
+
+> {% client.global.set("bookingId", response.body.data.id); %}
+
+### 12. 결제 요청 → paymentStatus: PAID (Kafka로 PaymentCompletedEvent 발행)
+POST http://localhost:8081/api/payments
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "bookingId": {{bookingId}},
+  "paymentMethod": "CARD"
+}
+
+> {% client.global.set("paymentId", response.body.data.id); %}
+
+### 13. 예약 상태 확인 → Kafka 컨슈머 처리 후 CONFIRMED
+GET http://localhost:8081/api/bookings/{{bookingId}}
+Authorization: Bearer {{userToken}}
+
+### 14. 결제 취소 → paymentStatus: REFUNDED (재고 원복 + 쿠폰 복구)
+POST http://localhost:8081/api/payments/{{paymentId}}/cancel
+Authorization: Bearer {{userToken}}
+
+### 15. 예약 상태 최종 확인
+GET http://localhost:8081/api/bookings/{{bookingId}}
+Authorization: Bearer {{userToken}}
