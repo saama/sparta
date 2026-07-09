@@ -185,7 +185,7 @@ DB 스키마는 앱 기동 시 **Flyway**가 자동 적용합니다(`src/main/re
 | 쿠폰 | `POST /api/coupons/{id}/issue` · `GET /api/coupons/me` · `POST /api/admin/coupons` | 필요/ADMIN |
 | 리뷰 | `POST /api/reviews` · `GET /api/rooms/{id}/reviews?rating=&page=&size=` | 필요/불필요 |
 
-전체 명세는 Swagger UI 및 [PROJECT_GUIDE.md](PROJECT_GUIDE.md) 참고.
+전체 명세는 Swagger UI 및 [PROJECT_GUIDE.md](msa-hotel-service/booking/PROJECT_GUIDE.md) 참고.
 
 ## 🧪 테스트
 
@@ -198,7 +198,7 @@ DB 스키마는 앱 기동 시 **Flyway**가 자동 적용합니다(`src/main/re
 bash e2e/run-e2e.sh
 ```
 
-IntelliJ HTTP Client용 시나리오 파일은 [`e2e/hotel-booking-e2e.http`](e2e/hotel-booking-e2e.http)에 있습니다.
+IntelliJ HTTP Client용 시나리오 파일은 [`e2e/hotel-booking-e2e.http`](msa-hotel-service/booking/e2e/hotel-booking-e2e.http)에 있습니다.
 
 ## 📬 문의
 
