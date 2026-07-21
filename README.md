@@ -1,6 +1,6 @@
 # 🏨 호텔 객실 예약 서비스
 
-> 로그인한 사용자가 호텔 객실을 검색·예약하고, 쿠폰 할인·결제·리뷰까지 이용할 수 있는 서비스입니다.
+> 호텔 객실을 검색·예약하고, 쿠폰 할인·결제·리뷰까지 이용할 수 있는 서비스입니다.
 > 동시 다발적인 예약 요청에도 **오버부킹 없이 안전하게 처리**하는 것을 핵심 목표로 합니다.
 
 Spring Boot 3.2.11 · Java 21 · MSA 4기 최종 프로젝트 (개인)
@@ -30,10 +30,12 @@ Spring Boot 3.2.11 · Java 21 · MSA 4기 최종 프로젝트 (개인)
 | 쿠폰 | 어드민 쿠폰 생성, 유저 발급(낙관적 락), FIXED/PERCENT 할인, 유효성 검증 |
 | 결제 | Mock PG 연동 결제, 결제 성공 시 예약 확정(PENDING → CONFIRMED), 취소 시 환불 + 재고/쿠폰 원복 |
 | 리뷰 | 투숙 완료(COMPLETED) 예약 1건당 1회 작성, 수정/삭제, 별점 필터 + 페이징 목록 |
+| 웹 UI | Spring 정적 리소스로 서빙되는 웹 프론트엔드(GRAND STAY) — 객실 검색/예약/결제/마이페이지 + 어드민(객실·재고·쿠폰) 화면 |
 
 ## 🛠 기술 스택
 
 - **Backend**: Java 21, Spring Boot 3.2.11, Spring Data JPA, QueryDSL, MapStruct, Spring Validation
+- **Frontend**: 프레임워크/빌드 도구 없는 정적 웹 UI — 바닐라 ES Modules + CSS 디자인 토큰, Spring `static/`에서 서빙(공통 `api.js`가 ApiResponse 규약 처리 및 401 시 토큰 자동 재발급)
 - **인증/보안**: Spring Security, JWT(jjwt), BCrypt
 - **DB**: MySQL 8.0, Flyway 마이그레이션, 핵심 쿼리 인덱스 설계
 - **캐싱**: Redis (`@Cacheable` 객실 목록, Refresh Token 저장)
@@ -46,10 +48,11 @@ Spring Boot 3.2.11 · Java 21 · MSA 4기 최종 프로젝트 (개인)
 
 ```mermaid
 flowchart TB
-    Client["클라이언트<br/>(Swagger UI / REST)"]
+    Client["클라이언트<br/>(웹 UI / Swagger UI / REST)"]
 
     subgraph App["booking-service : 8081 (docker에서는 user-service 컨테이너)"]
         direction TB
+        Static["정적 웹 UI<br/>static/*.html · css · js"]
         Security["JWT 인증/인가<br/>JwtAuthenticationFilter"]
         subgraph Domains["도메인 (com.domain.*)"]
             Auth["auth"]
@@ -82,6 +85,7 @@ flowchart TB
         Kibana["Kibana :5601"]
     end
 
+    Client --> Static
     Client --> Security --> Domains
     Domains --> UserDB
     Auth --> Redis
@@ -98,6 +102,7 @@ flowchart TB
 
 - 패키지는 `com.domain.{auth,user,room,booking,coupon,payment,review}` 도메인 단위로 분리하고, 각 도메인은 `controller / dto / entity / repository / service (/ event)` 동일 구조를 따릅니다.
 - 공통 로직은 `com.global`(security, exception, config, aop, response, entity)에 위치합니다.
+- 웹 UI는 `src/main/resources/static/`에서 서빙됩니다. `SecurityConfig`가 정적 리소스 경로(`/`, `/*.html`, `/css/**`, `/js/**`, `/admin/**`, `/error`)를 공개하되 데이터 API `/api/admin/**`는 ADMIN 권한으로 계속 보호하며, 존재하지 않는 경로는 `GlobalExceptionHandler`가 404로 응답합니다.
 - 전체 스택(`msa-hotel-service/docker-compose.yml`)에는 향후 바운디드 컨텍스트 분리를 대비한 예비 DB(booking-db :3308, stock-db :3309, payment-db :3310)도 정의되어 있으며, 현재 앱은 user-db 단일 데이터소스를 사용합니다.
 - **예약 확정 흐름**: 예약 생성 시 PENDING 상태로 저장하고 `booking-events`를 발행합니다. 결제는 `PaymentService.pay()`가 Mock PG 승인 후 같은 트랜잭션에서 예약을 CONFIRMED로 전환합니다. `payment-completed-events` 토픽 컨슈머(수동 ack)는 외부 결제 완료 이벤트를 수신해 예약을 확정하는 경로로 별도 구독 중입니다.
 
@@ -165,6 +170,7 @@ docker compose up -d
 
 | 서비스 | 주소 |
 |---|---|
+| 웹 UI (GRAND STAY) | http://localhost:8081/ |
 | API / Swagger | http://localhost:8081/swagger-ui.html |
 | Actuator Health | http://localhost:8081/actuator/health |
 | Kibana | http://localhost:5601 |
@@ -199,6 +205,16 @@ bash e2e/run-e2e.sh
 ```
 
 IntelliJ HTTP Client용 시나리오 파일은 [`e2e/hotel-booking-e2e.http`](msa-hotel-service/booking/e2e/hotel-booking-e2e.http)에 있습니다.
+
+### 성능·정합성 측정 스크립트 (`perf/`)
+
+동시성 전략과 캐싱 효과를 실측하는 스크립트입니다(전체 스택 기동 후 실행, `perf/seed.sh`로 데이터 시딩).
+
+| 스크립트 | 측정 내용 |
+|---|---|
+| `test-overbooking.sh` | 동시 예약 요청 시 오버부킹 여부 — 비관적 락 적용 시 성공 = 재고, 잔여 = 0 검증 |
+| `test-coupon.sh` | 선착순 쿠폰 동시 발급 정합성 — 낙관적 락(`@Version`) + `uq_user_coupon`으로 발급 수 = 한도 검증 |
+| `test-cache.sh` | 객실 목록 조회 API의 Redis 캐시 미스 vs 히트 응답 시간 비교 |
 
 ## 📬 문의
 
