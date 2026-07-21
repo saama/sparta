@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>객실 상세 — GRAND STAY</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/layout.css">
+</head>
+<body>
+  <main class="site-main">
+    <div class="container">
+      <div class="detail-layout" id="detail-layout">
+        <!-- 좌: 객실 정보 + 리뷰 -->
+        <div>
+          <div id="room-info">
+            <div class="skeleton skeleton-block" style="height:300px"></div>
+            <div class="mt-4">
+              <div class="skeleton skeleton-line" style="width:40%"></div>
+              <div class="skeleton skeleton-line" style="width:70%"></div>
+            </div>
+          </div>
+
+          <!-- 리뷰 섹션 -->
+          <section class="card mt-8">
+            <div class="card-body">
+              <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+                <h2>이용 후기</h2>
+                <div class="flex items-center gap-2">
+                  <label class="text-sm text-muted" for="rating-filter">평점</label>
+                  <select class="input" id="rating-filter" style="width:110px">
+                    <option value="">전체</option>
+                    <option value="5">★ 5점</option>
+                    <option value="4">★ 4점</option>
+                    <option value="3">★ 3점</option>
+                    <option value="2">★ 2점</option>
+                    <option value="1">★ 1점</option>
+                  </select>
+                </div>
+              </div>
+              <div id="review-list"></div>
+              <div class="pagination" id="review-pagination"></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- 우: 예약 패널 (sticky) -->
+        <aside class="side-panel">
+          <div class="card">
+            <div class="card-body flex-col flex gap-4" id="booking-panel">
+              <h3>예약하기</h3>
+              <div class="field">
+                <label for="arrDate">체크인</label>
+                <input class="input" type="date" id="arrDate">
+              </div>
+              <div class="field">
+                <label for="depDate">체크아웃</label>
+                <input class="input" type="date" id="depDate">
+              </div>
+              <div class="field">
+                <label for="guestCount">인원</label>
+                <select class="input" id="guestCount"></select>
+              </div>
+              <hr class="divider" style="margin:0">
+              <div class="summary-row"><span class="label" id="price-per-night"></span><span class="value" id="nights-label"></span></div>
+              <div class="summary-row total"><span class="label">예상 결제 금액</span><span class="value" id="total-price">-</span></div>
+              <button class="btn btn-primary btn-lg" id="reserve-btn" disabled>예약하기</button>
+              <p class="text-xs text-muted text-center">최종 금액은 예약 단계에서 확정됩니다</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/room.js"></script>
+</body>
+</html>

@@ -25,6 +25,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private final JwtTokenProvider jwtTokenProvider;
   private final ObjectMapper objectMapper;
 
+  /**
+   * 리프레시 토큰 재발급 요청은 Authorization 헤더에 REFRESH 타입 토큰을 담아 오므로,
+   * 이 필터의 "ACCESS 토큰만 허용" 검사를 건너뛴다 (토큰 검증은 AuthService.refresh가 수행).
+   */
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    return "/api/auth/refresh".equals(request.getRequestURI());
+  }
+
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
       FilterChain filterChain) throws ServletException, IOException {

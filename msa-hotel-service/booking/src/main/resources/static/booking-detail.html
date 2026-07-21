@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>예약 상세 — GRAND STAY</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/layout.css">
+</head>
+<body>
+  <main class="site-main">
+    <div class="container narrow-layout">
+      <div class="page-head">
+        <a href="/bookings.html" class="text-sm text-muted">← 예약 내역으로</a>
+        <h1 class="mt-2">예약 상세</h1>
+      </div>
+
+      <div id="detail-root">
+        <div class="card"><div class="card-body"><div class="skeleton skeleton-block"></div></div></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 예약 취소 모달 -->
+  <div class="modal-backdrop" id="cancel-modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>예약 취소</h3>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm" id="cancel-notice">예약을 취소하시겠습니까?</p>
+        <div class="field">
+          <label for="cancel-reason">취소 사유</label>
+          <textarea class="input" id="cancel-reason" placeholder="예: 일정 변경"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close-modal>닫기</button>
+        <button class="btn btn-danger" id="cancel-confirm-btn">예약 취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 리뷰 작성 모달 -->
+  <div class="modal-backdrop" id="review-modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>이용 후기 작성</h3>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>평점</label>
+          <div class="star-input" id="star-input">
+            <button type="button" data-v="1">★</button>
+            <button type="button" data-v="2">★</button>
+            <button type="button" data-v="3">★</button>
+            <button type="button" data-v="4">★</button>
+            <button type="button" data-v="5">★</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="review-content">후기 내용</label>
+          <textarea class="input" id="review-content" placeholder="객실은 어떠셨나요?"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close-modal>닫기</button>
+        <button class="btn btn-primary" id="review-submit-btn">등록하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/booking-detail.js"></script>
+</body>
+</html>

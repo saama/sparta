@@ -29,7 +29,11 @@ public class SecurityConfig {
       "/api/v3/api-docs/**", "/v3/api-docs/**", "/favicon.ico", "/actuator/**",
       "/swagger-resources/**", "/external/**",
       "/api/auth/registration", "/api/auth/login", "/api/auth/refresh", "/api/auth/status",
-      "/api/rooms", "/api/rooms/**"
+      "/api/rooms", "/api/rooms/**",
+      // 정적 프론트엔드 리소스 공개 경로 — 페이지 파일 자체는 공개하되,
+      // 어드민 데이터 API(/api/admin/**)는 아래 hasRole("ADMIN") 규칙으로 계속 보호된다.
+      // "/error"가 없으면 존재하지 않는 경로 접근 시 404 대신 401 JSON이 반환되므로 반드시 포함.
+      "/", "/*.html", "/css/**", "/js/**", "/assets/**", "/admin/**", "/error"
   };
 
   private final ObjectMapper objectMapper;

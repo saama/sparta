@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>결제 — GRAND STAY</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/layout.css">
+</head>
+<body>
+  <main class="site-main">
+    <div class="container narrow-layout">
+
+      <!-- 1단계: 결제 진행 화면 -->
+      <section id="pay-step">
+        <div class="page-head">
+          <h1>결제</h1>
+          <p class="subtitle">예약 내용을 확인하고 결제 수단을 선택하세요</p>
+        </div>
+
+        <!-- 예약 요약 -->
+        <div class="card mb-4">
+          <div class="card-body" id="booking-summary">
+            <div class="skeleton skeleton-block"></div>
+          </div>
+        </div>
+
+        <!-- 결제 수단 -->
+        <div class="card">
+          <div class="card-body flex flex-col gap-4">
+            <h2>결제 수단</h2>
+            <div class="pay-methods" id="pay-methods"></div>
+            <button class="btn btn-primary btn-lg" id="pay-btn" disabled>결제하기</button>
+            <p class="text-xs text-muted text-center">Mock PG 연동 — 실제 결제가 이루어지지 않습니다</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2단계: 예약 확정 대기 (Kafka 비동기 처리 폴링) -->
+      <section id="confirm-step" class="hidden text-center" style="padding:64px 0">
+        <div class="flex justify-center mb-4"><div class="spinner" style="width:56px;height:56px"></div></div>
+        <h1>예약을 확정하고 있습니다</h1>
+        <p class="text-muted mt-2">결제가 완료되어 예약을 확정하는 중입니다. 잠시만 기다려주세요.</p>
+      </section>
+
+      <!-- 3단계: 완료 화면 -->
+      <section id="done-step" class="hidden text-center" style="padding:64px 0">
+        <div class="flex justify-center mb-6"><div class="check-anim">✓</div></div>
+        <h1 id="done-title">예약이 확정되었습니다</h1>
+        <p class="text-muted mt-2" id="done-message"></p>
+        <div class="flex justify-center gap-3 mt-8">
+          <a class="btn btn-outline" href="/bookings.html">예약 내역 보기</a>
+          <a class="btn btn-primary" id="done-detail-link" href="#">예약 상세 확인</a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/payment.js"></script>
+</body>
+</html>

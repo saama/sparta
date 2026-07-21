@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>예약하기 — GRAND STAY</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/layout.css">
+</head>
+<body>
+  <main class="site-main">
+    <div class="container narrow-layout">
+      <div class="page-head">
+        <h1>예약하기</h1>
+        <p class="subtitle">투숙 정보를 확인하고 예약을 진행하세요</p>
+      </div>
+
+      <!-- 객실 요약 -->
+      <div class="card mb-4" id="room-summary">
+        <div class="card-body"><div class="skeleton skeleton-block"></div></div>
+      </div>
+
+      <!-- 예약 폼 -->
+      <form class="card" id="booking-form" novalidate>
+        <div class="card-body flex flex-col gap-4">
+          <h2>투숙 정보</h2>
+
+          <div class="flex gap-4 flex-wrap">
+            <div class="field flex-1">
+              <label for="arrDate">체크인</label>
+              <input class="input" type="date" id="arrDate" required>
+            </div>
+            <div class="field flex-1">
+              <label for="depDate">체크아웃</label>
+              <input class="input" type="date" id="depDate" required>
+            </div>
+          </div>
+
+          <div class="flex gap-4 flex-wrap">
+            <div class="field flex-1">
+              <label for="adultCount">성인</label>
+              <select class="input" id="adultCount"></select>
+            </div>
+            <div class="field flex-1">
+              <label for="childCount">아동</label>
+              <select class="input" id="childCount"></select>
+            </div>
+          </div>
+          <p class="field-error" id="capacity-error"></p>
+
+          <hr class="divider" style="margin:0">
+          <h2>투숙객 정보</h2>
+
+          <div class="field">
+            <label for="guestName">투숙객 이름</label>
+            <input class="input" type="text" id="guestName" placeholder="체크인 시 확인할 이름" required>
+          </div>
+          <div class="field">
+            <label for="guestPhone">연락처</label>
+            <input class="input" type="tel" id="guestPhone" placeholder="010-1234-5678" required>
+          </div>
+          <div class="field">
+            <label for="requestMemo">요청 사항 <span class="text-muted">(선택)</span></label>
+            <textarea class="input" id="requestMemo" placeholder="예: 늦은 체크인 예정입니다"></textarea>
+          </div>
+
+          <hr class="divider" style="margin:0">
+          <h2>쿠폰</h2>
+          <div class="field">
+            <label for="coupon-select">보유 쿠폰</label>
+            <select class="input" id="coupon-select">
+              <option value="">쿠폰을 선택하세요</option>
+            </select>
+            <span class="hint" id="coupon-hint">이 예약에 사용 가능한 쿠폰만 표시됩니다</span>
+          </div>
+
+          <hr class="divider" style="margin:0">
+
+          <!-- 금액 요약 -->
+          <div class="flex flex-col gap-2">
+            <div class="summary-row"><span class="label" id="price-detail">-</span><span class="value" id="base-price">-</span></div>
+            <div class="summary-row hidden" id="discount-row">
+              <span class="label">쿠폰 할인</span><span class="value text-danger" id="discount-amount"></span>
+            </div>
+            <div class="summary-row total"><span class="label">예상 결제 금액</span><span class="value" id="total-price">-</span></div>
+            <p class="text-xs text-muted">최종 금액은 서버에서 확정되며 결제 화면에 표시됩니다</p>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">예약하고 결제하기</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/booking.js"></script>
+</body>
+</html>

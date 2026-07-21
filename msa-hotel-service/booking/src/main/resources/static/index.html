@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GRAND STAY — 호텔 예약</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/layout.css">
+</head>
+<body>
+  <main class="site-main" style="padding-top:0">
+    <!-- 히어로 + 검색 -->
+    <section class="hero">
+      <div class="container">
+        <h1>완벽한 하루의 시작</h1>
+        <p>도심 속 프리미엄 스테이, 지금 원하는 날짜의 객실을 찾아보세요</p>
+      </div>
+    </section>
+
+    <div class="container">
+      <form class="search-bar" id="search-form">
+        <div class="field">
+          <label for="arrDate">체크인</label>
+          <input class="input" type="date" id="arrDate" required>
+        </div>
+        <div class="field">
+          <label for="depDate">체크아웃</label>
+          <input class="input" type="date" id="depDate" required>
+        </div>
+        <div class="field" style="max-width:120px">
+          <label for="guestCount">인원</label>
+          <select class="input" id="guestCount">
+            <option value="1">1명</option>
+            <option value="2" selected>2명</option>
+            <option value="3">3명</option>
+            <option value="4">4명</option>
+            <option value="5">5명</option>
+            <option value="6">6명</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="height:44px">객실 검색</button>
+      </form>
+
+      <!-- 검색 결과 -->
+      <div class="page-head flex items-center justify-between">
+        <h2>예약 가능한 객실</h2>
+        <span class="text-sm text-muted" id="result-summary"></span>
+      </div>
+      <div class="room-grid" id="room-grid"></div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/index.js"></script>
+</body>
+</html>

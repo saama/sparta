@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>객실 관리 — GRAND STAY Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/layout.css">
+</head>
+<body>
+  <main class="site-main">
+    <div class="container">
+      <div class="admin-layout">
+        <aside class="admin-side" id="admin-side"></aside>
+
+        <div>
+          <div class="page-head flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1>객실 관리</h1>
+              <p class="subtitle">객실 상품을 등록·수정·삭제합니다. 오늘 기준 예약 가능 목록이 표시됩니다.</p>
+            </div>
+            <button class="btn btn-primary" id="create-btn">+ 객실 등록</button>
+          </div>
+
+          <p class="text-xs text-muted mb-3">
+            ※ 별도 관리자 목록 API가 없어 공개 조회 API를 사용합니다 — 재고가 없거나 비활성화된 객실은 목록에 표시되지 않을 수 있습니다.
+          </p>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>객실명</th><th>타입</th><th>1박 요금</th>
+                  <th>기준/최대</th><th>오늘 잔여</th><th style="width:200px">관리</th>
+                </tr>
+              </thead>
+              <tbody id="room-tbody"></tbody>
+            </table>
+          </div>
+          <div id="room-empty"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 객실 등록/수정 모달 (공용) -->
+  <div class="modal-backdrop" id="room-modal">
+    <div class="modal modal-wide" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="room-modal-title">객실 등록</h3>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <form id="room-form">
+        <div class="modal-body">
+          <div class="field">
+            <label for="f-name">객실명 *</label>
+            <input class="input" type="text" id="f-name" required placeholder="디럭스 시티뷰">
+          </div>
+          <div class="flex gap-4 flex-wrap">
+            <div class="field flex-1">
+              <label for="f-roomType">객실 타입 *</label>
+              <select class="input" id="f-roomType" required>
+                <option value="STANDARD">스탠다드</option>
+                <option value="DELUXE">디럭스</option>
+                <option value="SUITE">스위트</option>
+              </select>
+            </div>
+            <div class="field flex-1">
+              <label for="f-price">1박 요금(원) *</label>
+              <input class="input" type="number" id="f-price" required min="0" step="1000" placeholder="150000">
+            </div>
+          </div>
+          <div class="flex gap-4 flex-wrap">
+            <div class="field flex-1">
+              <label for="f-baseCapacity">기준 인원 *</label>
+              <input class="input" type="number" id="f-baseCapacity" required min="1" value="2">
+            </div>
+            <div class="field flex-1">
+              <label for="f-maxCapacity">최대 인원 *</label>
+              <input class="input" type="number" id="f-maxCapacity" required min="1" value="2">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-thumbnailUrl">썸네일 URL</label>
+            <input class="input" type="url" id="f-thumbnailUrl" placeholder="https://...">
+            <div class="mt-2 hidden" id="thumb-preview-wrap" style="max-width:240px;border-radius:8px;overflow:hidden">
+              <img id="thumb-preview" alt="썸네일 미리보기">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-description">객실 소개</label>
+            <textarea class="input" id="f-description" placeholder="객실 설명을 입력하세요"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal>닫기</button>
+          <button type="submit" class="btn btn-primary" id="room-save-btn">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/admin/rooms.js"></script>
+</body>
+</html>

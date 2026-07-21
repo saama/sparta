@@ -1,0 +1,58 @@
+/* ==========================================================================
+   tokens.css — 디자인 토큰 (모든 색/타이포/간격/그림자의 단일 원천)
+   럭셔리 부티크 호텔 톤: 딥 네이비 + 골드 액센트 + 웜 아이보리
+   ========================================================================== */
+:root {
+  /* 브랜드 색상 */
+  --navy-900: #1a2332;   /* 헤더/푸터/제목 */
+  --navy-800: #212c40;
+  --navy-700: #2c3a52;
+  --gold-400: #d8bc7e;
+  --gold-500: #c8a45c;   /* primary 액센트/별점 */
+  --gold-600: #b08d3f;
+  --cream-50: #faf7f2;   /* 페이지 배경 */
+  --cream-100: #f3eee6;  /* 섹션 배경 */
+
+  /* 텍스트/선 */
+  --ink-900: #20242b;
+  --ink-700: #3d434e;
+  --ink-500: #6b7280;
+  --ink-300: #9aa1ad;
+  --line: #e5e0d8;
+
+  /* 상태 색상 (soft 배경은 컴포넌트에서 색상+투명도로 파생) */
+  --success: #2e7d54;
+  --warning: #b7791f;
+  --danger: #c0392b;
+  --info: #2563a8;
+
+  /* 형태 */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+  --shadow-card: 0 2px 12px rgba(26, 35, 50, .08);
+  --shadow-hover: 0 8px 24px rgba(26, 35, 50, .14);
+  --shadow-modal: 0 20px 60px rgba(26, 35, 50, .3);
+
+  /* 타이포 */
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+               'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  --font-serif: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+  --fs-hero: 40px;
+
+  /* 간격 스케일 */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  /* 레이아웃 */
+  --container: 1080px;
+  --header-h: 64px;
+
+  /* 전환 */
+  --tr: .18s ease;
+}

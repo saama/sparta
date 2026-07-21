@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>예약 내역 — GRAND STAY</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/layout.css">
+</head>
+<body>
+  <main class="site-main">
+    <div class="container" style="max-width:820px">
+      <div class="page-head flex items-center justify-between">
+        <div>
+          <h1>예약 내역</h1>
+          <p class="subtitle">나의 모든 예약을 확인하고 관리하세요</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="refresh-btn">⟳ 새로고침</button>
+      </div>
+
+      <!-- 상태 필터 탭 (클라이언트 필터) -->
+      <div class="tabs mb-6" id="status-tabs">
+        <button class="tab active" data-status="">전체</button>
+        <button class="tab" data-status="PENDING">결제대기</button>
+        <button class="tab" data-status="CONFIRMED">예약확정</button>
+        <button class="tab" data-status="COMPLETED">이용완료</button>
+        <button class="tab" data-status="CANCELLED">취소됨</button>
+      </div>
+
+      <div class="flex flex-col gap-4" id="booking-list"></div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/bookings.js"></script>
+</body>
+</html>
