@@ -3,7 +3,8 @@
 > 호텔 객실을 검색·예약하고, 쿠폰 할인·결제·리뷰까지 이용할 수 있는 서비스입니다.
 > 동시 다발적인 예약 요청에도 **오버부킹 없이 안전하게 처리**하는 것을 핵심 목표로 합니다.
 
-Spring Boot 3.2.11 · Java 21 · MSA 4기 최종 프로젝트 (개인)
+Spring Boot 3.2.11 · Java 21 · MSA 4기 최종 프로젝트 (개인)   
+Github : https://github.com/saama/sparta
 
 ---
 
