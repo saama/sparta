@@ -75,4 +75,4 @@ Stateless JWT(jjwt) 방식 — `JwtTokenProvider`가 액세스/리프레시 토�
 - 커밋 메시지: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:` 접두사 사용.
 - 기능 구현 시 동일 변경에 테스트 코드도 함께 작성.
 - 기능 구현 시 코드에 설명 주석을 작성 (프로젝트 필수 규칙).
-- 브랜치 전략: 작업 브랜치 `work/{팀번호}-{이름}` → 제출 브랜치 `project/{팀번호}-{이름}`로 PR (루트 `README.md` 참고).
+- 프로젝트 분석시 루트/README.md파일 참조
