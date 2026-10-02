@@ -1,5 +1,6 @@
 package com.domain.payment.event;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -47,12 +48,14 @@ class PaymentEventConsumerTest {
   }
 
   @Test
-  @DisplayName("결제 완료 이벤트 수신 - 서비스 처리 실패 시 ack하지 않음")
+  @DisplayName("결제 완료 이벤트 수신 - 처리 실패 시 예외를 에러 핸들러로 전파하고 ack하지 않음")
   void onPaymentCompleted_fail() {
     willThrow(new DomainException(DomainExceptionCode.NOT_FOUND_BOOKING))
         .given(bookingService).confirmByPayment(99L, 1L);
 
-    paymentEventConsumer.onPaymentCompleted(createEvent(99L), ack);
+    // 예외를 삼키지 않아야 DefaultErrorHandler가 재시도/DLT 처리를 할 수 있다
+    assertThatThrownBy(() -> paymentEventConsumer.onPaymentCompleted(createEvent(99L), ack))
+        .isInstanceOf(DomainException.class);
 
     verify(ack, never()).acknowledge();
   }

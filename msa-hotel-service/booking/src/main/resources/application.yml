@@ -46,8 +46,11 @@ spring:
       group-id: booking-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # ErrorHandlingDeserializer가 실제 역직렬화를 JsonDeserializer에 위임하고, 실패하면 예외를 리스너 에러로 넘긴다.
+      # 이 래퍼가 없으면 깨진 메시지(poison pill)가 poll 단계에서 계속 실패해 컨슈머가 무한 루프에 빠진다.
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         # 역직렬화를 허용할 이벤트 패키지 (구독하는 이벤트 클래스의 패키지를 모두 포함해야 함)
         spring.json.trusted.packages: com.domain.booking.event,com.domain.payment.event
       enable-auto-commit: false
