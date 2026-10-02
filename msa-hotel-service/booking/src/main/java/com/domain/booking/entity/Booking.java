@@ -116,7 +116,16 @@ public class Booking extends BaseEntity {
     this.cancelReason = reason;
   }
 
+  /**
+   * 예약 확정 (PENDING → CONFIRMED)
+   *
+   * <p>PENDING 상태에서만 허용한다. 가드가 없으면 늦게 도착한 결제 완료 이벤트가
+   * 이미 취소(CANCELLED)된 예약을 CONFIRMED로 되살릴 수 있다.
+   */
   public void confirm() {
+    if (this.status != BookingStatus.PENDING) {
+      throw new IllegalStateException("확정할 수 없는 상태입니다.");
+    }
     this.status = BookingStatus.CONFIRMED;
   }
 

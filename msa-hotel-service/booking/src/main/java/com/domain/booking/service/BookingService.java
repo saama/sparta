@@ -20,10 +20,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -139,6 +141,38 @@ public class BookingService {
     }
 
     return BookingResponse.from(booking);
+  }
+
+  /**
+   * 결제 완료에 따른 예약 확정 (PaymentEventConsumer에서 호출)
+   *
+   * <p>Kafka는 at-least-once 전달이므로 같은 이벤트가 여러 번 오거나, 취소 이후에 늦게 도착할 수 있다.
+   * 따라서 현재 예약 상태를 보고 멱등하게 처리한다.
+   * <ul>
+   *   <li>PENDING: CONFIRMED로 확정</li>
+   *   <li>CONFIRMED: 이미 처리된 중복 이벤트 → 아무것도 하지 않음</li>
+   *   <li>CANCELLED/COMPLETED: 확정 대상이 아님 → 상태를 되돌리지 않고 경고만 남김</li>
+   * </ul>
+   * 어떤 경우든 예외 없이 끝나면 Consumer가 ack하여 같은 메시지가 무한 재처리되지 않게 한다.
+   *
+   * @param bookingId 확정할 예약 ID
+   * @param paymentId 이벤트를 발생시킨 결제 ID (로그 추적용)
+   */
+  @Transactional
+  public void confirmByPayment(Long bookingId, Long paymentId) {
+    Booking booking = bookingRepository.findByIdWithLock(bookingId)
+        .orElseThrow(() -> new DomainException(DomainExceptionCode.NOT_FOUND_BOOKING));
+
+    switch (booking.getStatus()) {
+      case PENDING -> {
+        booking.confirm();
+        log.info("예약 확정 완료 - bookingId: {}, paymentId: {}", bookingId, paymentId);
+      }
+      case CONFIRMED -> log.info("이미 확정된 예약, 중복 이벤트 무시 - bookingId: {}, paymentId: {}",
+          bookingId, paymentId);
+      default -> log.warn("확정할 수 없는 상태의 예약, 이벤트 무시 - bookingId: {}, status: {}, paymentId: {}",
+          bookingId, booking.getStatus(), paymentId);
+    }
   }
 
   private String generateBookingNumber() {

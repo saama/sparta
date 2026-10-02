@@ -351,6 +351,76 @@ class BookingServiceTest {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // 결제 완료에 따른 예약 확정 테스트 (멱등성)
+  // ─────────────────────────────────────────────────────────────
+
+  private Booking createBooking(Long bookingId) {
+    Booking booking = Booking.builder()
+        .userId(10L).roomProduct(createRoom()).bookingNumber("BK003")
+        .arrDate(LocalDate.of(2026, 7, 1)).depDate(LocalDate.of(2026, 7, 3))
+        .adultCount(2).childCount(0).totPrice(300000)
+        .build();
+    setField(booking, "id", bookingId);
+    return booking;
+  }
+
+  @Test
+  @DisplayName("결제 완료 확정 - PENDING 예약은 CONFIRMED로 변경")
+  void confirmByPayment_pending() {
+    Booking booking = createBooking(1L);
+    given(bookingRepository.findByIdWithLock(1L)).willReturn(Optional.of(booking));
+
+    bookingService.confirmByPayment(1L, 100L);
+
+    assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+  }
+
+  @Test
+  @DisplayName("결제 완료 확정 - 중복 이벤트: 이미 CONFIRMED면 예외 없이 무시")
+  void confirmByPayment_duplicateEvent() {
+    Booking booking = createBooking(1L);
+    booking.confirm(); // 첫 번째 이벤트로 이미 확정된 상태
+    given(bookingRepository.findByIdWithLock(1L)).willReturn(Optional.of(booking));
+
+    bookingService.confirmByPayment(1L, 100L);
+
+    assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+  }
+
+  @Test
+  @DisplayName("결제 완료 확정 - 지연 이벤트: 이미 CANCELLED면 되살리지 않음")
+  void confirmByPayment_alreadyCancelled() {
+    Booking booking = createBooking(1L);
+    booking.cancel("결제 취소"); // 이벤트 도착 전에 취소됨
+    given(bookingRepository.findByIdWithLock(1L)).willReturn(Optional.of(booking));
+
+    bookingService.confirmByPayment(1L, 100L);
+
+    // 취소된 예약이 CONFIRMED로 덮어써지지 않아야 한다
+    assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+  }
+
+  @Test
+  @DisplayName("결제 완료 확정 실패 - 존재하지 않는 예약")
+  void confirmByPayment_notFound() {
+    given(bookingRepository.findByIdWithLock(99L)).willReturn(Optional.empty());
+
+    assertThatThrownBy(() -> bookingService.confirmByPayment(99L, 100L))
+        .isInstanceOf(DomainException.class)
+        .hasMessageContaining("예약 정보를 찾을 수 없습니다");
+  }
+
+  @Test
+  @DisplayName("예약 엔티티 - PENDING이 아닌 예약은 confirm() 불가")
+  void bookingConfirm_guard() {
+    Booking booking = createBooking(1L);
+    booking.cancel("취소");
+
+    assertThatThrownBy(booking::confirm)
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // 테스트 유틸
   // ─────────────────────────────────────────────────────────────
 

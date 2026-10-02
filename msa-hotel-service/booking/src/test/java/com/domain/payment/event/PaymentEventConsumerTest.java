@@ -1,18 +1,12 @@
 package com.domain.payment.event;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.domain.booking.entity.Booking;
-import com.domain.booking.entity.BookingStatus;
-import com.domain.booking.repository.BookingRepository;
-import com.domain.room.entity.RoomProduct;
-import com.domain.room.entity.RoomType;
-import java.time.LocalDate;
-import java.util.Optional;
+import com.domain.booking.service.BookingService;
+import com.global.exception.DomainException;
+import com.global.exception.DomainExceptionCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +15,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.support.Acknowledgment;
 
+/**
+ * Consumer는 메시징(서비스 위임 + ack)만 검증한다.
+ * 상태별 멱등 처리 로직은 BookingServiceTest의 confirmByPayment 테스트에서 검증한다.
+ */
 @ExtendWith(MockitoExtension.class)
 class PaymentEventConsumerTest {
 
@@ -28,27 +26,9 @@ class PaymentEventConsumerTest {
   private PaymentEventConsumer paymentEventConsumer;
 
   @Mock
-  private BookingRepository bookingRepository;
+  private BookingService bookingService;
   @Mock
   private Acknowledgment ack;
-
-  // ─────────────────────────────────────────────────────────────
-  // 픽스처
-  // ─────────────────────────────────────────────────────────────
-
-  private Booking createPendingBooking(Long bookingId) {
-    RoomProduct room = RoomProduct.builder()
-        .name("디럭스 더블").roomType(RoomType.DELUXE).price(150000)
-        .baseCapacity(2).maxCapacity(4)
-        .build();
-    Booking booking = Booking.builder()
-        .userId(10L).roomProduct(room).bookingNumber("BK001")
-        .arrDate(LocalDate.of(2026, 7, 1)).depDate(LocalDate.of(2026, 7, 3))
-        .adultCount(2).childCount(0).totPrice(300000)
-        .build();
-    setField(booking, "id", bookingId);
-    return booking;
-  }
 
   private PaymentCompletedEvent createEvent(Long bookingId) {
     return PaymentCompletedEvent.builder()
@@ -56,46 +36,24 @@ class PaymentEventConsumerTest {
         .build();
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // 결제 완료 이벤트 처리 테스트
-  // ─────────────────────────────────────────────────────────────
-
   @Test
-  @DisplayName("결제 완료 이벤트 수신 - 예약 CONFIRMED 변경 후 ack")
+  @DisplayName("결제 완료 이벤트 수신 - 서비스 처리 후 ack")
   void onPaymentCompleted_success() {
-    Booking booking = createPendingBooking(1L);
-    given(bookingRepository.findById(1L)).willReturn(Optional.of(booking));
-
     paymentEventConsumer.onPaymentCompleted(createEvent(1L), ack);
 
-    assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
-    verify(bookingRepository).save(booking);
-    // 처리 성공 시에만 offset 커밋
+    verify(bookingService).confirmByPayment(1L, 1L);
+    // 처리(커밋) 성공 시에만 offset 커밋
     verify(ack).acknowledge();
   }
 
   @Test
-  @DisplayName("결제 완료 이벤트 수신 - 예약이 없으면 ack하지 않음")
-  void onPaymentCompleted_bookingNotFound() {
-    given(bookingRepository.findById(99L)).willReturn(Optional.empty());
+  @DisplayName("결제 완료 이벤트 수신 - 서비스 처리 실패 시 ack하지 않음")
+  void onPaymentCompleted_fail() {
+    willThrow(new DomainException(DomainExceptionCode.NOT_FOUND_BOOKING))
+        .given(bookingService).confirmByPayment(99L, 1L);
 
     paymentEventConsumer.onPaymentCompleted(createEvent(99L), ack);
 
-    verify(bookingRepository, never()).save(any());
     verify(ack, never()).acknowledge();
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // 테스트 유틸
-  // ─────────────────────────────────────────────────────────────
-
-  private void setField(Object obj, String fieldName, Object value) {
-    try {
-      var field = obj.getClass().getDeclaredField(fieldName);
-      field.setAccessible(true);
-      field.set(obj, value);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
   }
 }
