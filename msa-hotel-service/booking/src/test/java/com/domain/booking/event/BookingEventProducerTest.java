@@ -35,7 +35,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Mockito 단위 테스트로는 트랜잭션 동기화가 동작하지 않아 이 부분을 검증할 수 없다.
  */
 @SpringJUnitConfig(BookingEventProducerTest.Config.class)
-@TestPropertySource(properties = "app.kafka.topics.booking-events=booking-events")
+@TestPropertySource(properties = {
+    "app.kafka.topics.booking-events=booking-events",
+    "app.kafka.topics.booking-cancelled-events=booking-cancelled-events"})
 class BookingEventProducerTest {
 
   @Configuration
@@ -122,6 +124,30 @@ class BookingEventProducerTest {
     transactionTemplate.executeWithoutResult(status -> {
       eventPublisher.publishEvent(createEvent());
       status.setRollbackOnly(); // 예약 생성 중 예외 등으로 롤백되는 상황
+    });
+
+    verify(kafkaTemplate, never()).send(anyString(), anyString(), any());
+  }
+
+  @Test
+  @DisplayName("예약 취소 이벤트도 커밋 이후 booking-cancelled-events 토픽으로 전송된다")
+  void publishCancelled_afterCommit() {
+    BookingCancelledEvent event = BookingCancelledEvent.builder().bookingId(2L).build();
+
+    transactionTemplate.executeWithoutResult(status -> {
+      eventPublisher.publishEvent(event);
+      verify(kafkaTemplate, never()).send(anyString(), anyString(), any());
+    });
+
+    verify(kafkaTemplate).send(eq("booking-cancelled-events"), eq("2"), eq(event));
+  }
+
+  @Test
+  @DisplayName("예약 취소가 롤백되면 취소 이벤트도 전송되지 않는다 (유효한 예약의 결제가 환불되는 사고 방지)")
+  void notPublishCancelled_onRollback() {
+    transactionTemplate.executeWithoutResult(status -> {
+      eventPublisher.publishEvent(BookingCancelledEvent.builder().bookingId(2L).build());
+      status.setRollbackOnly();
     });
 
     verify(kafkaTemplate, never()).send(anyString(), anyString(), any());

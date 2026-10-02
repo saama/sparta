@@ -239,7 +239,7 @@ class PaymentServiceTest {
     RoomStock stock = RoomStock.builder()
         .roomProduct(room).date(LocalDate.of(2026, 7, 1)).stock(2).build();
 
-    given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+    given(paymentRepository.findByIdWithLock(1L)).willReturn(Optional.of(payment));
     given(pgClient.cancel("TID-MOCK12345678")).willReturn(PgResponse.success("TID-MOCK12345678"));
     given(roomStockRepository.findByRoomProductIdAndDateBetween(any(), any(), any()))
         .willReturn(List.of(stock));
@@ -270,7 +270,7 @@ class PaymentServiceTest {
     UserCoupon userCoupon = UserCoupon.builder().userId(10L).coupon(coupon).build();
     userCoupon.use(); // 사용 상태
 
-    given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+    given(paymentRepository.findByIdWithLock(1L)).willReturn(Optional.of(payment));
     given(pgClient.cancel(any())).willReturn(PgResponse.success("TID"));
     given(roomStockRepository.findByRoomProductIdAndDateBetween(any(), any(), any()))
         .willReturn(List.of());
@@ -289,7 +289,7 @@ class PaymentServiceTest {
     Booking booking = createConfirmedBooking(1L, 10L, room); // userId = 10L
     Payment payment = createPayment(1L, booking);
 
-    given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+    given(paymentRepository.findByIdWithLock(1L)).willReturn(Optional.of(payment));
 
     // userId 99L 로 취소 시도 → 권한 없음
     assertThatThrownBy(() -> paymentService.cancel(99L, 1L))
@@ -300,11 +300,109 @@ class PaymentServiceTest {
   @Test
   @DisplayName("결제 취소 실패 - 존재하지 않는 결제")
   void cancel_fail_paymentNotFound() {
-    given(paymentRepository.findById(99L)).willReturn(Optional.empty());
+    given(paymentRepository.findByIdWithLock(99L)).willReturn(Optional.empty());
 
     assertThatThrownBy(() -> paymentService.cancel(10L, 99L))
         .isInstanceOf(DomainException.class)
         .hasMessageContaining("결제 정보를 찾을 수 없습니다");
+  }
+
+  @Test
+  @DisplayName("결제 취소 실패 - 이미 환불된 결제는 PG 호출 없이 거부 (이중 환불 방지)")
+  void cancel_fail_alreadyRefunded() {
+    RoomProduct room = createRoom();
+    Booking booking = createConfirmedBooking(1L, 10L, room);
+    Payment payment = createPayment(1L, booking);
+    payment.refund(); // 예약 취소 Saga로 이미 환불됨
+
+    given(paymentRepository.findByIdWithLock(1L)).willReturn(Optional.of(payment));
+
+    assertThatThrownBy(() -> paymentService.cancel(10L, 1L))
+        .isInstanceOf(DomainException.class)
+        .hasMessageContaining("환불할 수 없는 결제 상태입니다");
+    verify(pgClient, never()).cancel(any());
+  }
+
+  @Test
+  @DisplayName("결제 취소 - 예약이 이미 취소된 경우 환불만 하고 재고/쿠폰은 중복 복구하지 않음")
+  void cancel_bookingAlreadyCancelled_refundOnly() {
+    RoomProduct room = createRoom();
+    Booking booking = createConfirmedBooking(1L, 10L, room);
+    booking.cancel("예약 취소"); // 예약 취소 API로 먼저 취소됨 (재고/쿠폰은 그때 복구됨)
+    Payment payment = createPayment(1L, booking);
+
+    given(paymentRepository.findByIdWithLock(1L)).willReturn(Optional.of(payment));
+    given(pgClient.cancel("TID-MOCK12345678")).willReturn(PgResponse.success("TID-MOCK12345678"));
+
+    paymentService.cancel(10L, 1L);
+
+    assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
+    verify(roomStockRepository, never()).findByRoomProductIdAndDateBetween(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("결제 취소 실패 - PG 환불 실패 시 REFUNDED로 바꾸지 않음")
+  void cancel_fail_pgRefundFailed() {
+    RoomProduct room = createRoom();
+    Booking booking = createConfirmedBooking(1L, 10L, room);
+    Payment payment = createPayment(1L, booking);
+
+    given(paymentRepository.findByIdWithLock(1L)).willReturn(Optional.of(payment));
+    given(pgClient.cancel(any())).willReturn(PgResponse.failure("PG 오류"));
+
+    assertThatThrownBy(() -> paymentService.cancel(10L, 1L))
+        .isInstanceOf(DomainException.class)
+        .hasMessageContaining("환불 처리에 실패하였습니다");
+    assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 예약 취소 Saga - 결제 환불 테스트
+  // ─────────────────────────────────────────────────────────────
+
+  @Test
+  @DisplayName("예약 취소 환불 - PAID 결제를 PG 취소 후 REFUNDED 처리")
+  void refundByBookingCancel_success() {
+    RoomProduct room = createRoom();
+    Booking booking = createConfirmedBooking(1L, 10L, room);
+    Payment payment = createPayment(1L, booking);
+
+    given(paymentRepository.findByBookingIdAndStatusWithLock(1L, PaymentStatus.PAID))
+        .willReturn(List.of(payment));
+    given(pgClient.cancel("TID-MOCK12345678")).willReturn(PgResponse.success("TID-MOCK12345678"));
+
+    paymentService.refundByBookingCancel(1L);
+
+    assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
+    assertThat(payment.getRefundAmount()).isEqualTo(300000);
+  }
+
+  @Test
+  @DisplayName("예약 취소 환불 - PAID 결제가 없으면(결제 전 취소/이미 환불) PG 호출 없이 종료")
+  void refundByBookingCancel_noPaidPayment() {
+    given(paymentRepository.findByBookingIdAndStatusWithLock(1L, PaymentStatus.PAID))
+        .willReturn(List.of());
+
+    paymentService.refundByBookingCancel(1L);
+
+    verify(pgClient, never()).cancel(any());
+  }
+
+  @Test
+  @DisplayName("예약 취소 환불 실패 - PG 환불 실패 시 예외 (DLT로 이동해 수동 처리)")
+  void refundByBookingCancel_pgFailed() {
+    RoomProduct room = createRoom();
+    Booking booking = createConfirmedBooking(1L, 10L, room);
+    Payment payment = createPayment(1L, booking);
+
+    given(paymentRepository.findByBookingIdAndStatusWithLock(1L, PaymentStatus.PAID))
+        .willReturn(List.of(payment));
+    given(pgClient.cancel(any())).willReturn(PgResponse.failure("PG 오류"));
+
+    assertThatThrownBy(() -> paymentService.refundByBookingCancel(1L))
+        .isInstanceOf(DomainException.class)
+        .hasMessageContaining("환불 처리에 실패하였습니다");
+    assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
   }
 
   // ─────────────────────────────────────────────────────────────

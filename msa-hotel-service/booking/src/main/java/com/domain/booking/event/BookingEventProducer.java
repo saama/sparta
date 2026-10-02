@@ -26,6 +26,9 @@ public class BookingEventProducer {
     @Value("${app.kafka.topics.booking-events}")
     private String bookingEventsTopic;
 
+    @Value("${app.kafka.topics.booking-cancelled-events}")
+    private String bookingCancelledEventsTopic;
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publishBookingCreated(BookingCreatedEvent event) {
         kafkaTemplate.send(bookingEventsTopic, String.valueOf(event.getBookingId()), event)
@@ -37,6 +40,25 @@ public class BookingEventProducer {
                 } else {
                     log.info("예약 이벤트 발행 완료 - bookingId: {}, topic: {}",
                         event.getBookingId(), bookingEventsTopic);
+                }
+            });
+    }
+
+    /**
+     * 예약 취소 이벤트 발행 (Saga 보상 트리거)
+     *
+     * <p>예약 취소가 커밋된 뒤에만 발행해야 한다. 취소가 롤백됐는데 이벤트가 나가면
+     * 유효한 예약의 결제가 환불되어 버린다.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void publishBookingCancelled(BookingCancelledEvent event) {
+        kafkaTemplate.send(bookingCancelledEventsTopic, String.valueOf(event.getBookingId()), event)
+            .whenComplete((result, ex) -> {
+                if (ex != null) {
+                    log.error("예약 취소 이벤트 발행 실패 - bookingId: {}", event.getBookingId(), ex);
+                } else {
+                    log.info("예약 취소 이벤트 발행 완료 - bookingId: {}, topic: {}",
+                        event.getBookingId(), bookingCancelledEventsTopic);
                 }
             });
     }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.domain.booking.dto.request.BookingCancelRequest;
@@ -12,6 +13,7 @@ import com.domain.booking.dto.request.BookingCreateRequest;
 import com.domain.booking.dto.response.BookingResponse;
 import com.domain.booking.entity.Booking;
 import com.domain.booking.entity.BookingStatus;
+import com.domain.booking.event.BookingCancelledEvent;
 import com.domain.booking.event.BookingCreatedEvent;
 import com.domain.booking.repository.BookingRepository;
 import com.domain.coupon.entity.Coupon;
@@ -30,6 +32,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -305,6 +308,14 @@ class BookingServiceTest {
     assertThat(response.getStatus()).isEqualTo(BookingStatus.CANCELLED);
     // 재고가 1 복구되었는지 검증
     assertThat(stock.getStock()).isEqualTo(2);
+
+    // Saga 보상 트리거: 결제 도메인이 환불할 수 있도록 예약 취소 이벤트 발행
+    ArgumentCaptor<BookingCancelledEvent> captor =
+        ArgumentCaptor.forClass(BookingCancelledEvent.class);
+    verify(eventPublisher).publishEvent(captor.capture());
+    assertThat(captor.getValue().getBookingId()).isEqualTo(1L);
+    assertThat(captor.getValue().getUserId()).isEqualTo(10L);
+    assertThat(captor.getValue().getCancelReason()).isEqualTo("일정 변경");
   }
 
   @Test
@@ -399,6 +410,26 @@ class BookingServiceTest {
 
     // 취소된 예약이 CONFIRMED로 덮어써지지 않아야 한다
     assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+    // 결제는 됐으므로 환불 보상을 위해 예약 취소 이벤트를 다시 발행한다
+    ArgumentCaptor<BookingCancelledEvent> captor =
+        ArgumentCaptor.forClass(BookingCancelledEvent.class);
+    verify(eventPublisher).publishEvent(captor.capture());
+    assertThat(captor.getValue().getBookingId()).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("결제 완료 확정 - PENDING/CONFIRMED 예약은 보상 이벤트를 발행하지 않음")
+  void confirmByPayment_noCompensation() {
+    Booking pending = createBooking(1L);
+    Booking confirmed = createBooking(2L);
+    confirmed.confirm();
+    given(bookingRepository.findByIdWithLock(1L)).willReturn(Optional.of(pending));
+    given(bookingRepository.findByIdWithLock(2L)).willReturn(Optional.of(confirmed));
+
+    bookingService.confirmByPayment(1L, 100L);
+    bookingService.confirmByPayment(2L, 200L);
+
+    verify(eventPublisher, never()).publishEvent(any(BookingCancelledEvent.class));
   }
 
   @Test

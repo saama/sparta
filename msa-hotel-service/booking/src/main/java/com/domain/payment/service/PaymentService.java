@@ -19,6 +19,7 @@ import com.global.exception.DomainException;
 import com.global.exception.DomainExceptionCode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +38,11 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>객실 재고 원복</li>
  *   <li>사용된 쿠폰 복구 (있는 경우)</li>
  * </ol>
+ *
+ * <p>예약 취소 API로 예약이 먼저 취소된 경우에는 예약 취소 이벤트(Saga)를 통해
+ * {@link #refundByBookingCancel}에서 환불이 진행된다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -114,7 +119,8 @@ public class PaymentService {
      */
     @Transactional
     public PaymentResponse cancel(Long userId, Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
+        // 예약 취소 Saga(refundByBookingCancel)와 동시에 같은 결제를 환불하지 않도록 행을 잠근다.
+        Payment payment = paymentRepository.findByIdWithLock(paymentId)
             .orElseThrow(() -> new DomainException(DomainExceptionCode.NOT_FOUND_PAYMENT));
 
         Booking booking = payment.getBooking();
@@ -122,17 +128,32 @@ public class PaymentService {
             throw new DomainException(DomainExceptionCode.UNAUTHORIZED_ACCESS);
         }
 
+        // 외부 PG 호출 전에 모든 검증을 끝낸다.
+        // (PG 환불 후 검증에 실패해 롤백되면 "PG는 환불됐는데 DB는 PAID"인 불일치가 생긴다)
+        if (payment.getPaymentStatus() != PaymentStatus.PAID) {
+            throw new DomainException(DomainExceptionCode.INVALID_PAYMENT_STATUS);
+        }
+        // 예약이 이미 취소된 경우(예약 취소 API로 먼저 취소됨)는 환불만 진행한다.
+        boolean bookingAlreadyCancelled = booking.getStatus() == BookingStatus.CANCELLED;
+        if (!bookingAlreadyCancelled && booking.getStatus() != BookingStatus.PENDING
+            && booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new DomainException(DomainExceptionCode.CANNOT_CANCEL);
+        }
+
         // 1. PG 취소
-        pgClient.cancel(payment.getTid());
+        if (!pgClient.cancel(payment.getTid()).isSuccess()) {
+            throw new DomainException(DomainExceptionCode.REFUND_FAILED);
+        }
         // 2. 결제 상태 REFUNDED 처리
         payment.refund();
 
-        // 3. 예약 취소
-        try {
-            booking.cancel("결제 취소");
-        } catch (IllegalStateException e) {
-            throw new DomainException(DomainExceptionCode.CANNOT_CANCEL);
+        // 예약 취소 API에서 이미 예약 취소/재고 원복/쿠폰 복구를 했으므로 중복 처리하지 않는다.
+        if (bookingAlreadyCancelled) {
+            return PaymentResponse.from(payment);
         }
+
+        // 3. 예약 취소
+        booking.cancel("결제 취소");
 
         // 4. 객실 재고 원복
         List<RoomStock> stocks = roomStockRepository.findByRoomProductIdAndDateBetween(
@@ -146,5 +167,41 @@ public class PaymentService {
         }
 
         return PaymentResponse.from(payment);
+    }
+
+    /**
+     * 예약 취소에 따른 결제 환불 (Saga 보상 트랜잭션, BookingEventConsumer에서 호출)
+     *
+     * <p>예약 도메인이 발행한 예약 취소 이벤트를 받아 해당 예약의 PAID 결제를 환불한다.
+     * 이벤트는 중복 전달될 수 있으므로 멱등하게 처리한다.
+     * <ul>
+     *   <li>PAID 결제 있음: PG 취소 후 REFUNDED 처리</li>
+     *   <li>PAID 결제 없음(결제 전 취소, 이미 환불됨): 아무것도 하지 않음</li>
+     * </ul>
+     * 예약 취소/재고 원복/쿠폰 복구는 예약 도메인에서 이미 끝났으므로 여기서는 결제만 다룬다.
+     *
+     * <p>PG 환불이 실패하면 {@link DomainException}을 던져 DLT로 보내고 운영자가 수동 처리한다.
+     * (PG 환불은 같은 tid로 재요청해도 중복 환불되지 않는 것이 일반적이지만, Mock PG라 보장할 수 없어 자동 재시도하지 않는다)
+     *
+     * @param bookingId 취소된 예약 ID
+     */
+    @Transactional
+    public void refundByBookingCancel(Long bookingId) {
+        List<Payment> paidPayments =
+            paymentRepository.findByBookingIdAndStatusWithLock(bookingId, PaymentStatus.PAID);
+
+        if (paidPayments.isEmpty()) {
+            log.info("환불 대상 결제 없음 (결제 전 취소 또는 이미 환불) - bookingId: {}", bookingId);
+            return;
+        }
+
+        for (Payment payment : paidPayments) {
+            if (!pgClient.cancel(payment.getTid()).isSuccess()) {
+                throw new DomainException(DomainExceptionCode.REFUND_FAILED);
+            }
+            payment.refund();
+            log.info("예약 취소에 따른 결제 환불 완료 - bookingId: {}, paymentId: {}, amount: {}",
+                bookingId, payment.getId(), payment.getRefundAmount());
+        }
     }
 }

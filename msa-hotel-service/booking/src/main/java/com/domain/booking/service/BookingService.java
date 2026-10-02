@@ -4,6 +4,7 @@ import com.domain.booking.dto.request.BookingCancelRequest;
 import com.domain.booking.dto.request.BookingCreateRequest;
 import com.domain.booking.dto.response.BookingResponse;
 import com.domain.booking.entity.Booking;
+import com.domain.booking.event.BookingCancelledEvent;
 import com.domain.booking.event.BookingCreatedEvent;
 import com.domain.booking.repository.BookingRepository;
 import com.domain.coupon.entity.UserCoupon;
@@ -142,6 +143,14 @@ public class BookingService {
           .ifPresent(UserCoupon::restore);
     }
 
+    // Saga 보상: 결제가 완료된 예약이면 결제 도메인이 이 이벤트를 받아 환불한다.
+    // (결제 전 PENDING 예약이면 환불할 결제가 없으므로 결제 도메인에서 그냥 넘어간다)
+    eventPublisher.publishEvent(BookingCancelledEvent.builder()
+        .bookingId(booking.getId())
+        .userId(booking.getUserId())
+        .cancelReason(booking.getCancelReason())
+        .build());
+
     return BookingResponse.from(booking);
   }
 
@@ -153,7 +162,8 @@ public class BookingService {
    * <ul>
    *   <li>PENDING: CONFIRMED로 확정</li>
    *   <li>CONFIRMED: 이미 처리된 중복 이벤트 → 아무것도 하지 않음</li>
-   *   <li>CANCELLED/COMPLETED: 확정 대상이 아님 → 상태를 되돌리지 않고 경고만 남김</li>
+   *   <li>CANCELLED: 예약을 되살리지 않고 환불 보상 이벤트 발행</li>
+   *   <li>COMPLETED: 확정 대상이 아님 → 경고만 남김</li>
    * </ul>
    * 어떤 경우든 예외 없이 끝나면 Consumer가 ack하여 같은 메시지가 무한 재처리되지 않게 한다.
    *
@@ -172,6 +182,18 @@ public class BookingService {
       }
       case CONFIRMED -> log.info("이미 확정된 예약, 중복 이벤트 무시 - bookingId: {}, paymentId: {}",
           bookingId, paymentId);
+      case CANCELLED -> {
+        // 결제와 취소가 엇갈린 경우(결제 커밋 직전에 예약이 취소됨): 돈은 결제됐지만 예약은 취소 상태다.
+        // 예약을 되살리지 않고, 취소 이벤트를 다시 발행해 결제 도메인이 환불하도록 보상한다.
+        // (환불은 PAID 결제만 대상으로 하므로 이미 환불된 경우 중복 환불되지 않는다)
+        log.warn("취소된 예약에 결제 완료 이벤트 도착, 환불 보상 요청 - bookingId: {}, paymentId: {}",
+            bookingId, paymentId);
+        eventPublisher.publishEvent(BookingCancelledEvent.builder()
+            .bookingId(booking.getId())
+            .userId(booking.getUserId())
+            .cancelReason(booking.getCancelReason())
+            .build());
+      }
       default -> log.warn("확정할 수 없는 상태의 예약, 이벤트 무시 - bookingId: {}, status: {}, paymentId: {}",
           bookingId, booking.getStatus(), paymentId);
     }

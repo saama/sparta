@@ -75,7 +75,16 @@ public class Payment extends BaseEntity {
         this.paidAt = LocalDateTime.now();
     }
 
+    /**
+     * 환불 (PAID → REFUNDED)
+     *
+     * <p>결제 취소 API와 예약 취소 Saga 두 경로에서 환불이 일어날 수 있으므로,
+     * PAID 상태에서만 허용해 이중 환불을 막는다.
+     */
     public void refund() {
+        if (this.paymentStatus != PaymentStatus.PAID) {
+            throw new IllegalStateException("환불할 수 없는 결제 상태입니다.");
+        }
         this.paymentStatus = PaymentStatus.REFUNDED;
         this.refundAmount = this.paidAmount;
         this.refundedAt = LocalDateTime.now();

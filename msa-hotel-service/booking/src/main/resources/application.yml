@@ -65,6 +65,8 @@ app:
   kafka:
     topics:
       booking-events: booking-events
+      # 예약 취소 → 결제 환불 (Saga 보상 트랜잭션 트리거)
+      booking-cancelled-events: booking-cancelled-events
       payment-completed-events: payment-completed-events
 
 springdoc:
