@@ -12,7 +12,7 @@ import com.domain.booking.dto.request.BookingCreateRequest;
 import com.domain.booking.dto.response.BookingResponse;
 import com.domain.booking.entity.Booking;
 import com.domain.booking.entity.BookingStatus;
-import com.domain.booking.event.BookingEventProducer;
+import com.domain.booking.event.BookingCreatedEvent;
 import com.domain.booking.repository.BookingRepository;
 import com.domain.coupon.entity.Coupon;
 import com.domain.coupon.entity.DiscountType;
@@ -33,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
@@ -49,7 +50,7 @@ class BookingServiceTest {
   @Mock
   private UserCouponRepository userCouponRepository;
   @Mock
-  private BookingEventProducer bookingEventProducer;
+  private ApplicationEventPublisher eventPublisher;
 
   // ─────────────────────────────────────────────────────────────
   // 픽스처
@@ -133,7 +134,7 @@ class BookingServiceTest {
     assertThat(stock1.getStock()).isEqualTo(2);
     assertThat(stock2.getStock()).isEqualTo(1);
     verify(bookingRepository).save(any(Booking.class));
-    verify(bookingEventProducer).publishBookingCreated(any());
+    verify(eventPublisher).publishEvent(any(BookingCreatedEvent.class));
   }
 
   @Test

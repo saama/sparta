@@ -5,7 +5,6 @@ import com.domain.booking.dto.request.BookingCreateRequest;
 import com.domain.booking.dto.response.BookingResponse;
 import com.domain.booking.entity.Booking;
 import com.domain.booking.event.BookingCreatedEvent;
-import com.domain.booking.event.BookingEventProducer;
 import com.domain.booking.repository.BookingRepository;
 import com.domain.coupon.entity.UserCoupon;
 import com.domain.coupon.repository.UserCouponRepository;
@@ -21,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +34,8 @@ public class BookingService {
   private final RoomProductRepository roomProductRepository;
   private final RoomStockRepository roomStockRepository;
   private final UserCouponRepository userCouponRepository;
-  private final BookingEventProducer bookingEventProducer;
+  // Kafka로 직접 보내지 않고 Spring 내부 이벤트로 발행 → 커밋 이후 BookingEventProducer가 Kafka 전송
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional(isolation = Isolation.REPEATABLE_READ)
   public BookingResponse create(Long userId, BookingCreateRequest request) {
@@ -93,7 +94,8 @@ public class BookingService {
 
     Booking saved = bookingRepository.save(booking);
 
-    bookingEventProducer.publishBookingCreated(BookingCreatedEvent.builder()
+    // 커밋 성공 시에만 BookingEventProducer(@TransactionalEventListener)가 Kafka로 전송한다.
+    eventPublisher.publishEvent(BookingCreatedEvent.builder()
         .bookingId(saved.getId())
         .bookingNumber(saved.getBookingNumber())
         .userId(userId)

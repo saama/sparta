@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * 결제 이벤트 발행기
@@ -13,6 +15,10 @@ import org.springframework.stereotype.Component;
  * 예약 확정(PENDING → CONFIRMED)은 결제 서비스가 직접 하지 않고,
  * 이 이벤트를 구독하는 {@link PaymentEventConsumer}가 처리한다.
  * 결제 서비스가 예약 도메인을 직접 변경하지 않으므로, 이후 결제 서비스를 별도 MSA로 분리하기 쉬워진다.
+ *
+ * <p>결제 서비스는 {@code ApplicationEventPublisher}로 Spring 내부 이벤트만 발행하고,
+ * 이 클래스가 결제 트랜잭션 커밋 이후(AFTER_COMMIT)에 Kafka로 전송한다.
+ * 결제 저장이 롤백되면 이벤트도 나가지 않으므로 "결제 기록 없는 예약 확정"이 발생하지 않는다.
  */
 @Slf4j
 @Component
@@ -30,6 +36,7 @@ public class PaymentEventProducer {
      * <p>메시지 key를 bookingId로 지정해 같은 예약의 이벤트가 항상 같은 파티션에 들어가도록 한다.
      * (같은 파티션 안에서는 순서가 보장되므로, 예약 단위로 이벤트 순서가 유지된다)
      */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publishPaymentCompleted(PaymentCompletedEvent event) {
         kafkaTemplate.send(paymentCompletedEventsTopic, String.valueOf(event.getBookingId()), event)
             .whenComplete((result, ex) -> {

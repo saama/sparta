@@ -12,7 +12,6 @@ import com.domain.payment.dto.response.PaymentResponse;
 import com.domain.payment.entity.Payment;
 import com.domain.payment.entity.PaymentStatus;
 import com.domain.payment.event.PaymentCompletedEvent;
-import com.domain.payment.event.PaymentEventProducer;
 import com.domain.payment.repository.PaymentRepository;
 import com.domain.room.entity.RoomStock;
 import com.domain.room.repository.RoomStockRepository;
@@ -20,6 +19,7 @@ import com.global.exception.DomainException;
 import com.global.exception.DomainExceptionCode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +47,8 @@ public class PaymentService {
     private final UserCouponRepository userCouponRepository;
     private final RoomStockRepository roomStockRepository;
     private final PgClient pgClient;
-    private final PaymentEventProducer paymentEventProducer;
+    // Kafka로 직접 보내지 않고 Spring 내부 이벤트로 발행 → 커밋 이후 PaymentEventProducer가 Kafka 전송
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 결제 처리
@@ -90,7 +91,8 @@ public class PaymentService {
 
         // 결제 성공 → 결제 완료 이벤트 발행
         // 예약 확정(PENDING → CONFIRMED)은 PaymentEventConsumer가 이벤트를 받아 처리한다.
-        paymentEventProducer.publishPaymentCompleted(PaymentCompletedEvent.builder()
+        // 실제 Kafka 전송은 결제 트랜잭션 커밋 이후에 PaymentEventProducer가 수행한다.
+        eventPublisher.publishEvent(PaymentCompletedEvent.builder()
             .paymentId(saved.getId())
             .bookingId(booking.getId())
             .tid(saved.getTid())

@@ -23,7 +23,6 @@ import com.domain.payment.entity.Payment;
 import com.domain.payment.entity.PaymentMethod;
 import com.domain.payment.entity.PaymentStatus;
 import com.domain.payment.event.PaymentCompletedEvent;
-import com.domain.payment.event.PaymentEventProducer;
 import com.domain.payment.repository.PaymentRepository;
 import com.domain.room.entity.RoomProduct;
 import com.domain.room.entity.RoomStock;
@@ -40,6 +39,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -58,7 +58,7 @@ class PaymentServiceTest {
   @Mock
   private PgClient pgClient;
   @Mock
-  private PaymentEventProducer paymentEventProducer;
+  private ApplicationEventPublisher eventPublisher;
 
   // ─────────────────────────────────────────────────────────────
   // 픽스처
@@ -141,7 +141,7 @@ class PaymentServiceTest {
     // 발행된 이벤트 내용 검증
     ArgumentCaptor<PaymentCompletedEvent> captor =
         ArgumentCaptor.forClass(PaymentCompletedEvent.class);
-    verify(paymentEventProducer).publishPaymentCompleted(captor.capture());
+    verify(eventPublisher).publishEvent(captor.capture());
     PaymentCompletedEvent event = captor.getValue();
     assertThat(event.getPaymentId()).isEqualTo(1L);
     assertThat(event.getBookingId()).isEqualTo(1L);
@@ -169,7 +169,7 @@ class PaymentServiceTest {
 
     // PG 호출과 이벤트 발행이 일어나지 않아야 한다
     verify(pgClient, never()).pay(any(), anyInt());
-    verify(paymentEventProducer, never()).publishPaymentCompleted(any());
+    verify(eventPublisher, never()).publishEvent(any(PaymentCompletedEvent.class));
   }
 
   @Test
@@ -191,7 +191,7 @@ class PaymentServiceTest {
         .isInstanceOf(DomainException.class)
         .hasMessageContaining("결제 처리에 실패하였습니다");
 
-    verify(paymentEventProducer, never()).publishPaymentCompleted(any());
+    verify(eventPublisher, never()).publishEvent(any(PaymentCompletedEvent.class));
   }
 
   @Test
