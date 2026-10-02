@@ -10,6 +10,9 @@ import com.domain.payment.client.PgResponse;
 import com.domain.payment.dto.request.PaymentCreateRequest;
 import com.domain.payment.dto.response.PaymentResponse;
 import com.domain.payment.entity.Payment;
+import com.domain.payment.entity.PaymentStatus;
+import com.domain.payment.event.PaymentCompletedEvent;
+import com.domain.payment.event.PaymentEventProducer;
 import com.domain.payment.repository.PaymentRepository;
 import com.domain.room.entity.RoomStock;
 import com.domain.room.repository.RoomStockRepository;
@@ -23,7 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 결제 서비스
  *
- * <p>가상 PG({@link PgClient})를 통해 결제를 처리하며, 결제 성공 시 예약 상태를 CONFIRMED로 전환한다.
+ * <p>가상 PG({@link PgClient})를 통해 결제를 처리하며, 결제 성공 시 결제 완료 이벤트를 발행한다.
+ * 예약 상태 CONFIRMED 전환은 이벤트를 구독하는 {@code PaymentEventConsumer}가 비동기로 처리한다.
  *
  * <p>결제 취소 흐름:
  * <ol>
@@ -43,12 +47,13 @@ public class PaymentService {
     private final UserCouponRepository userCouponRepository;
     private final RoomStockRepository roomStockRepository;
     private final PgClient pgClient;
+    private final PaymentEventProducer paymentEventProducer;
 
     /**
      * 결제 처리
      *
      * <p>PENDING 상태 예약에 대해서만 결제를 허용한다.
-     * PG 결제 성공 시 예약 상태를 CONFIRMED로 변경한다.
+     * PG 결제 성공 시 Payment를 저장하고 {@link PaymentCompletedEvent}를 발행한다.
      *
      * @param userId  결제 요청 유저 ID
      * @param request 결제 수단 및 예약 ID
@@ -59,9 +64,15 @@ public class PaymentService {
         Booking booking = bookingRepository.findByIdAndUserId(request.getBookingId(), userId)
             .orElseThrow(() -> new DomainException(DomainExceptionCode.NOT_FOUND_BOOKING));
 
-        // PENDING 상태에서만 결제 가능 (중복 결제 방지)
+        // PENDING 상태에서만 결제 가능
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new DomainException(DomainExceptionCode.INVALID_BOOKING_STATUS);
+        }
+
+        // 중복 결제 방지: 결제 완료 후 Consumer가 예약을 확정하기 전까지는 예약이 PENDING이므로
+        // 이미 PAID 결제가 있는지 함께 확인한다.
+        if (paymentRepository.existsByBookingIdAndPaymentStatus(booking.getId(), PaymentStatus.PAID)) {
+            throw new DomainException(DomainExceptionCode.ALREADY_PAID_BOOKING);
         }
 
         PgResponse pgResponse = pgClient.pay(request.getPaymentMethod(), booking.getTotPrice());
@@ -69,17 +80,24 @@ public class PaymentService {
             throw new DomainException(DomainExceptionCode.PAYMENT_FAILED);
         }
 
-        // 결제 성공 → 예약 확정
-        booking.confirm();
-
         Payment payment = Payment.builder()
             .booking(booking)
             .paymentMethod(request.getPaymentMethod())
             .paidAmount(booking.getTotPrice())
             .tid(pgResponse.getTid())
             .build();
+        Payment saved = paymentRepository.save(payment);
 
-        return PaymentResponse.from(paymentRepository.save(payment));
+        // 결제 성공 → 결제 완료 이벤트 발행
+        // 예약 확정(PENDING → CONFIRMED)은 PaymentEventConsumer가 이벤트를 받아 처리한다.
+        paymentEventProducer.publishPaymentCompleted(PaymentCompletedEvent.builder()
+            .paymentId(saved.getId())
+            .bookingId(booking.getId())
+            .tid(saved.getTid())
+            .paidAmount(saved.getPaidAmount())
+            .build());
+
+        return PaymentResponse.from(saved);
     }
 
     /**

@@ -38,6 +38,7 @@ public enum DomainExceptionCode {
 
   NOT_FOUND_PAYMENT(HttpStatus.NOT_FOUND, "결제 정보를 찾을 수 없습니다."),
   PAYMENT_FAILED(HttpStatus.BAD_REQUEST, "결제 처리에 실패하였습니다."),
+  ALREADY_PAID_BOOKING(HttpStatus.CONFLICT, "이미 결제가 완료된 예약입니다."),
 
   NOT_FOUND_REVIEW(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."),
   DUPLICATE_REVIEW(HttpStatus.CONFLICT, "이미 리뷰를 작성하였습니다."),

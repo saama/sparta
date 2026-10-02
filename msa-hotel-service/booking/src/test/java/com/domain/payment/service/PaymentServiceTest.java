@@ -3,7 +3,9 @@ package com.domain.payment.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.domain.booking.entity.Booking;
@@ -20,6 +22,8 @@ import com.domain.payment.dto.response.PaymentResponse;
 import com.domain.payment.entity.Payment;
 import com.domain.payment.entity.PaymentMethod;
 import com.domain.payment.entity.PaymentStatus;
+import com.domain.payment.event.PaymentCompletedEvent;
+import com.domain.payment.event.PaymentEventProducer;
 import com.domain.payment.repository.PaymentRepository;
 import com.domain.room.entity.RoomProduct;
 import com.domain.room.entity.RoomStock;
@@ -32,6 +36,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -52,6 +57,8 @@ class PaymentServiceTest {
   private RoomStockRepository roomStockRepository;
   @Mock
   private PgClient pgClient;
+  @Mock
+  private PaymentEventProducer paymentEventProducer;
 
   // ─────────────────────────────────────────────────────────────
   // 픽스처
@@ -106,7 +113,7 @@ class PaymentServiceTest {
   // ─────────────────────────────────────────────────────────────
 
   @Test
-  @DisplayName("결제 성공 - 예약 상태 CONFIRMED로 변경")
+  @DisplayName("결제 성공 - 결제 완료 이벤트 발행, 예약 확정은 Consumer에 위임")
   void pay_success() {
     RoomProduct room = createRoom();
     Booking booking = createPendingBooking(1L, 10L, room, 300000);
@@ -118,15 +125,73 @@ class PaymentServiceTest {
     Payment savedPayment = createPayment(1L, booking);
 
     given(bookingRepository.findByIdAndUserId(1L, 10L)).willReturn(Optional.of(booking));
+    given(paymentRepository.existsByBookingIdAndPaymentStatus(1L, PaymentStatus.PAID))
+        .willReturn(false);
     given(pgClient.pay(PaymentMethod.CARD, 300000)).willReturn(PgResponse.success("TID-ABC123"));
     given(paymentRepository.save(any(Payment.class))).willReturn(savedPayment);
 
     PaymentResponse response = paymentService.pay(10L, request);
 
-    // 예약 상태가 CONFIRMED로 변경되었는지 검증
-    assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
     assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
     verify(paymentRepository).save(any(Payment.class));
+
+    // 결제 서비스는 예약을 직접 확정하지 않는다 (Consumer가 이벤트로 처리)
+    assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
+
+    // 발행된 이벤트 내용 검증
+    ArgumentCaptor<PaymentCompletedEvent> captor =
+        ArgumentCaptor.forClass(PaymentCompletedEvent.class);
+    verify(paymentEventProducer).publishPaymentCompleted(captor.capture());
+    PaymentCompletedEvent event = captor.getValue();
+    assertThat(event.getPaymentId()).isEqualTo(1L);
+    assertThat(event.getBookingId()).isEqualTo(1L);
+    assertThat(event.getTid()).isEqualTo("TID-MOCK12345678");
+    assertThat(event.getPaidAmount()).isEqualTo(300000);
+  }
+
+  @Test
+  @DisplayName("결제 실패 - 이미 결제된 예약 (예약 확정 전 중복 결제 요청)")
+  void pay_fail_alreadyPaid() {
+    RoomProduct room = createRoom();
+    Booking booking = createPendingBooking(1L, 10L, room, 300000); // 아직 Consumer 처리 전이라 PENDING
+
+    PaymentCreateRequest request = new PaymentCreateRequest();
+    setField(request, "bookingId", 1L);
+    setField(request, "paymentMethod", PaymentMethod.CARD);
+
+    given(bookingRepository.findByIdAndUserId(1L, 10L)).willReturn(Optional.of(booking));
+    given(paymentRepository.existsByBookingIdAndPaymentStatus(1L, PaymentStatus.PAID))
+        .willReturn(true);
+
+    assertThatThrownBy(() -> paymentService.pay(10L, request))
+        .isInstanceOf(DomainException.class)
+        .hasMessageContaining("이미 결제가 완료된 예약입니다");
+
+    // PG 호출과 이벤트 발행이 일어나지 않아야 한다
+    verify(pgClient, never()).pay(any(), anyInt());
+    verify(paymentEventProducer, never()).publishPaymentCompleted(any());
+  }
+
+  @Test
+  @DisplayName("결제 실패 - PG 결제 실패 시 이벤트 미발행")
+  void pay_fail_pgFailed() {
+    RoomProduct room = createRoom();
+    Booking booking = createPendingBooking(1L, 10L, room, 300000);
+
+    PaymentCreateRequest request = new PaymentCreateRequest();
+    setField(request, "bookingId", 1L);
+    setField(request, "paymentMethod", PaymentMethod.CARD);
+
+    given(bookingRepository.findByIdAndUserId(1L, 10L)).willReturn(Optional.of(booking));
+    given(paymentRepository.existsByBookingIdAndPaymentStatus(1L, PaymentStatus.PAID))
+        .willReturn(false);
+    given(pgClient.pay(PaymentMethod.CARD, 300000)).willReturn(PgResponse.failure("한도 초과"));
+
+    assertThatThrownBy(() -> paymentService.pay(10L, request))
+        .isInstanceOf(DomainException.class)
+        .hasMessageContaining("결제 처리에 실패하였습니다");
+
+    verify(paymentEventProducer, never()).publishPaymentCompleted(any());
   }
 
   @Test

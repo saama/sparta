@@ -48,7 +48,8 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: com.domain.booking.event
+        # 역직렬화를 허용할 이벤트 패키지 (구독하는 이벤트 클래스의 패키지를 모두 포함해야 함)
+        spring.json.trusted.packages: com.domain.booking.event,com.domain.payment.event
       enable-auto-commit: false
     listener:
       ack-mode: manual_immediate

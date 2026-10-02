@@ -10,6 +10,12 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
+/**
+ * 결제 완료 이벤트 구독기
+ *
+ * <p>{@link PaymentEventProducer}가 발행한 {@link PaymentCompletedEvent}를 받아
+ * 예약 상태를 PENDING → CONFIRMED로 변경한다.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -17,7 +23,9 @@ public class PaymentEventConsumer {
 
     private final BookingRepository bookingRepository;
 
-    @KafkaListener(topics = "payment-completed-events", groupId = "${spring.kafka.consumer.group-id}")
+    // 토픽명은 Producer와 같은 설정값을 사용해 하드코딩으로 인한 불일치를 방지한다.
+    @KafkaListener(topics = "${app.kafka.topics.payment-completed-events}",
+        groupId = "${spring.kafka.consumer.group-id}")
     public void onPaymentCompleted(PaymentCompletedEvent event, Acknowledgment ack) {
         try {
             Booking booking = bookingRepository.findById(event.getBookingId())
